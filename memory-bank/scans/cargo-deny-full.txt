@@ -1,0 +1,100 @@
+error[rejected]: failed to satisfy license requirements
+   ┌─ /Users/michael/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/adler2-2.0.1/Cargo.toml:38:12
+   │
+38 │ license = "0BSD OR MIT OR Apache-2.0"
+   │            ━━━━────━━━────━━━━━━━━━━
+   │            │       │      │
+   │            │       │      rejected: license is not explicitly allowed
+   │            │       rejected: license is not explicitly allowed
+   │            rejected: license is not explicitly allowed
+   │
+   ├ 0BSD - BSD Zero Clause License:
+   ├   - OSI approved
+   ├ MIT - MIT License:
+   ├   - OSI approved
+   ├   - FSF Free/Libre
+   ├ Apache-2.0 - Apache License 2.0:
+   ├   - OSI approved
+   ├   - FSF Free/Libre
+   ├ adler2 v2.0.1
+     └── miniz_oxide v0.8.9
+         ├── flate2 v1.1.9
+         │   ├── compression-codecs v0.4.38
+         │   │   └── async-compression v0.4.42
+         │   │       └── tower-http v0.6.11
+         │   │           ├── reqwest v0.12.28
+         │   │           │   └── brew-browser v0.1.0
+         │   │           └── reqwest v0.13.3
+         │   │               └── tauri v2.11.2
+         │   │                   ├── brew-browser v0.1.0 (*)
+         │   │                   ├── tauri-plugin-dialog v2.7.1
+         │   │                   │   └── brew-browser v0.1.0 (*)
+         │   │                   ├── tauri-plugin-fs v2.5.1
+         │   │                   │   └── tauri-plugin-dialog v2.7.1 (*)
+         │   │                   └── tauri-plugin-opener v2.5.4
+         │   │                       └── brew-browser v0.1.0 (*)
+         │   ├── png v0.17.16
+         │   │   ├── ico v0.5.0
+         │   │   │   └── tauri-codegen v2.6.2
+         │   │   │       └── tauri-macros v2.6.2
+         │   │   │           └── tauri v2.11.2 (*)
+         │   │   └── tauri-codegen v2.6.2 (*)
+         │   └── png v0.18.1
+         │       └── muda v0.19.2
+         │           └── tauri v2.11.2 (*)
+         ├── png v0.17.16 (*)
+         └── png v0.18.1 (*)
+
+error[rejected]: failed to satisfy license requirements
+   ┌─ /Users/michael/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/aho-corasick-1.1.4/Cargo.toml:40:12
+   │
+40 │ license = "Unlicense OR MIT"
+   │            ━━━━━━━━━────━━━
+   │            │            │
+   │            │            rejected: license is not explicitly allowed
+   │            rejected: license is not explicitly allowed
+   │
+   ├ Unlicense - The Unlicense:
+   ├   - OSI approved
+   ├   - FSF Free/Libre
+   ├ MIT - MIT License:
+   ├   - OSI approved
+   ├   - FSF Free/Libre
+   ├ aho-corasick v1.1.4
+     ├── regex v1.12.3
+     │   ├── tauri-utils v2.9.2
+     │   │   ├── tauri v2.11.2
+     │   │   │   ├── brew-browser v0.1.0
+     │   │   │   ├── tauri-plugin-dialog v2.7.1
+     │   │   │   │   └── brew-browser v0.1.0 (*)
+     │   │   │   ├── tauri-plugin-fs v2.5.1
+     │   │   │   │   └── tauri-plugin-dialog v2.7.1 (*)
+     │   │   │   └── tauri-plugin-opener v2.5.4
+     │   │   │       └── brew-browser v0.1.0 (*)
+     │   │   ├── tauri-build v2.6.2
+     │   │   │   ├── (build) brew-browser v0.1.0 (*)
+     │   │   │   └── (build) tauri v2.11.2 (*)
+     │   │   ├── tauri-codegen v2.6.2
+     │   │   │   └── tauri-macros v2.6.2
+     │   │   │       └── tauri v2.11.2 (*)
+     │   │   ├── tauri-macros v2.6.2 (*)
+     │   │   ├── tauri-plugin v2.6.2
+     │   │   │   ├── (build) tauri-plugin-dialog v2.7.1 (*)
+     │   │   │   ├── (build) tauri-plugin-fs v2.5.1 (*)
+     │   │   │   └── (build) tauri-plugin-opener v2.5.4 (*)
+     │   │   ├── (build) tauri-plugin-fs v2.5.1 (*)
+     │   │   ├── tauri-runtime v2.11.2
+     │   │   │   ├── tauri v2.11.2 (*)
+     │   │   │   └── tauri-runtime-wry v2.11.2
+     │   │   │       └── tauri v2.11.2 (*)
+     │   │   └── tauri-runtime-wry v2.11.2 (*)
+     │   └── urlpattern v0.3.0
+     │       └── tauri-utils v2.9.2 (*)
+     └── regex-automata v0.4.14
+         ├── matchers v0.2.0
+         │   └── tracing-subscriber v0.3.23
+         │       └── brew-browser v0.1.0 (*)
+         ├── regex v1.12.3 (*)
+         └── tracing-subscriber v0.3.23 (*)
+
+error[rejected]: failed to satisfy license requirements

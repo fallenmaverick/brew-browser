@@ -1,0 +1,1670 @@
+{
+  "version": "2026-05-23",
+  "generated_at": "2026-05-24T04:42:41Z",
+  "model": "claude-haiku-4-5",
+  "categories": {
+    "ai": {
+      "label": "AI & ML",
+      "icon": "Brain"
+    },
+    "browsers": {
+      "label": "Browsers",
+      "icon": "Globe"
+    },
+    "cloud-devops": {
+      "label": "Cloud & DevOps",
+      "icon": "Cloud"
+    },
+    "communication": {
+      "label": "Communication",
+      "icon": "MessageSquare"
+    },
+    "data": {
+      "label": "Data",
+      "icon": "Database"
+    },
+    "developer-tools": {
+      "label": "Developer Tools",
+      "icon": "Code"
+    },
+    "editors": {
+      "label": "Editors & IDEs",
+      "icon": "FileCode"
+    },
+    "education": {
+      "label": "Education",
+      "icon": "GraduationCap"
+    },
+    "games": {
+      "label": "Games & Entertainment",
+      "icon": "Gamepad2"
+    },
+    "graphics": {
+      "label": "Graphics & Design",
+      "icon": "Palette"
+    },
+    "music": {
+      "label": "Music",
+      "icon": "Music"
+    },
+    "office": {
+      "label": "Office & Docs",
+      "icon": "FileText"
+    },
+    "productivity": {
+      "label": "Productivity",
+      "icon": "Briefcase"
+    },
+    "security": {
+      "label": "Security",
+      "icon": "Lock"
+    },
+    "system-utilities": {
+      "label": "System Utilities",
+      "icon": "Settings"
+    },
+    "terminal": {
+      "label": "Terminal",
+      "icon": "Terminal"
+    },
+    "video-audio": {
+      "label": "Video & Audio",
+      "icon": "Video"
+    },
+    "writing": {
+      "label": "Writing",
+      "icon": "PenTool"
+    },
+    "uncategorized": {
+      "label": "Uncategorized",
+      "icon": "HelpCircle"
+    }
+  },
+  "casks": {
+    "0-ad": [
+      "games"
+    ],
+    "010-editor": [
+      "developer-tools"
+    ],
+    "115browser": [
+      "browsers"
+    ],
+    "1clipboard": [
+      "productivity",
+      "system-utilities"
+    ],
+    "1kc-razer": [
+      "system-utilities"
+    ],
+    "1password": [
+      "security"
+    ],
+    "1password-cli": [
+      "security",
+      "developer-tools"
+    ],
+    "1password-cli@1": [
+      "security",
+      "developer-tools"
+    ],
+    "1password-cli@beta": [
+      "security",
+      "developer-tools"
+    ],
+    "1password@7": [
+      "security"
+    ],
+    "1password@beta": [
+      "security"
+    ],
+    "1password@nightly": [
+      "security"
+    ],
+    "3dgenceslicer": [
+      "graphics"
+    ],
+    "4k-image-compressor": [
+      "graphics"
+    ],
+    "4k-slideshow-maker": [
+      "video-audio"
+    ],
+    "4k-stogram": [
+      "video-audio"
+    ],
+    "4k-tokkit": [
+      "video-audio"
+    ],
+    "4k-video-downloader": [
+      "video-audio"
+    ],
+    "4k-video-downloader+": [
+      "video-audio"
+    ],
+    "4k-video-to-mp3": [
+      "video-audio"
+    ],
+    "4k-youtube-to-mp3": [
+      "video-audio"
+    ],
+    "4peaks": [
+      "graphics"
+    ],
+    "5ire": [
+      "ai",
+      "communication"
+    ],
+    "5kplayer": [
+      "video-audio"
+    ],
+    "7777": [
+      "cloud-devops",
+      "data"
+    ],
+    "86box": [
+      "games"
+    ],
+    "8bitdo-ultimate-software": [
+      "games",
+      "system-utilities"
+    ],
+    "8bitdo-ultimate-software-v2": [
+      "games",
+      "system-utilities"
+    ],
+    "8x8-work": [
+      "communication"
+    ],
+    "a-better-finder-attributes": [
+      "system-utilities"
+    ],
+    "a-better-finder-rename": [
+      "system-utilities"
+    ],
+    "abbyy-finereader-pdf": [
+      "office"
+    ],
+    "ableset": [
+      "music"
+    ],
+    "ableton-live-intro": [
+      "music"
+    ],
+    "ableton-live-intro@11": [
+      "music"
+    ],
+    "ableton-live-lite": [
+      "music"
+    ],
+    "ableton-live-lite@11": [
+      "music"
+    ],
+    "ableton-live-standard": [
+      "music"
+    ],
+    "ableton-live-standard@11": [
+      "music"
+    ],
+    "ableton-live-suite": [
+      "music"
+    ],
+    "ableton-live-suite@10": [
+      "music"
+    ],
+    "ableton-live-suite@11": [
+      "music"
+    ],
+    "abstract": [
+      "graphics"
+    ],
+    "abyssoft-teleport": [
+      "system-utilities"
+    ],
+    "accessmenubarapps": [
+      "system-utilities"
+    ],
+    "accord": [
+      "communication"
+    ],
+    "accordance": [
+      "education"
+    ],
+    "accordance@13": [
+      "education"
+    ],
+    "ace-link": [
+      "video-audio",
+      "system-utilities"
+    ],
+    "ace-studio": [
+      "ai",
+      "music"
+    ],
+    "acorn": [
+      "graphics"
+    ],
+    "acreom": [
+      "productivity",
+      "writing"
+    ],
+    "acronis-true-image": [
+      "system-utilities"
+    ],
+    "acronis-true-image-cleanup-tool": [
+      "system-utilities"
+    ],
+    "active-trader-pro": [
+      "uncategorized"
+    ],
+    "activedock": [
+      "system-utilities",
+      "productivity"
+    ],
+    "activitywatch": [
+      "productivity"
+    ],
+    "actual": [
+      "productivity"
+    ],
+    "actual-odbc-pack": [
+      "data",
+      "developer-tools"
+    ],
+    "adapter": [
+      "video-audio"
+    ],
+    "adguard": [
+      "security"
+    ],
+    "adguard-vpn": [
+      "security"
+    ],
+    "adguard-vpn@nightly": [
+      "security"
+    ],
+    "adguard@nightly": [
+      "security"
+    ],
+    "adium": [
+      "communication"
+    ],
+    "adlock": [
+      "security"
+    ],
+    "adobe-acrobat-pro": [
+      "office"
+    ],
+    "adobe-acrobat-reader": [
+      "office"
+    ],
+    "adobe-air": [
+      "developer-tools"
+    ],
+    "adobe-connect": [
+      "communication"
+    ],
+    "adobe-creative-cloud": [
+      "graphics",
+      "video-audio"
+    ],
+    "adobe-creative-cloud-cleaner-tool": [
+      "system-utilities"
+    ],
+    "adobe-digital-editions": [
+      "office"
+    ],
+    "adobe-dng-converter": [
+      "graphics"
+    ],
+    "adrive": [
+      "cloud-devops"
+    ],
+    "advanced-renamer": [
+      "system-utilities"
+    ],
+    "advancedrestclient": [
+      "developer-tools"
+    ],
+    "advantagescope": [
+      "developer-tools"
+    ],
+    "adze": [
+      "graphics"
+    ],
+    "aegisub": [
+      "video-audio"
+    ],
+    "aerial": [
+      "system-utilities"
+    ],
+    "aerial@beta": [
+      "system-utilities"
+    ],
+    "aexol-remote-mouse": [
+      "uncategorized"
+    ],
+    "affine": [
+      "productivity",
+      "writing"
+    ],
+    "affinity": [
+      "graphics"
+    ],
+    "affinity-designer": [
+      "graphics"
+    ],
+    "affinity-designer@1": [
+      "graphics"
+    ],
+    "affinity-photo": [
+      "graphics"
+    ],
+    "affinity-photo@1": [
+      "graphics"
+    ],
+    "affinity-publisher": [
+      "graphics",
+      "office"
+    ],
+    "affinity-publisher@1": [
+      "graphics",
+      "office"
+    ],
+    "after-dark-classic": [
+      "system-utilities"
+    ],
+    "agent-tars": [
+      "ai"
+    ],
+    "agentkube": [
+      "ai",
+      "cloud-devops"
+    ],
+    "agentsview": [
+      "ai",
+      "developer-tools"
+    ],
+    "agi": [
+      "developer-tools"
+    ],
+    "ai-studio": [
+      "ai",
+      "data"
+    ],
+    "aide-app": [
+      "ai",
+      "editors"
+    ],
+    "aifun": [
+      "ai"
+    ],
+    "aigcpanel": [
+      "ai",
+      "video-audio"
+    ],
+    "aimersoft-video-converter-ultimate": [
+      "video-audio"
+    ],
+    "aionui": [
+      "ai",
+      "productivity"
+    ],
+    "air-video-server-hd": [
+      "video-audio"
+    ],
+    "airbuddy": [
+      "system-utilities"
+    ],
+    "aircall": [
+      "communication"
+    ],
+    "airdash": [
+      "productivity"
+    ],
+    "airdroid": [
+      "productivity",
+      "system-utilities"
+    ],
+    "airflow": [
+      "video-audio"
+    ],
+    "airfoil": [
+      "music"
+    ],
+    "airmedia": [
+      "productivity"
+    ],
+    "airparrot": [
+      "video-audio"
+    ],
+    "airpass": [
+      "system-utilities"
+    ],
+    "airscroll": [
+      "system-utilities"
+    ],
+    "airserver": [
+      "video-audio"
+    ],
+    "airtable": [
+      "data",
+      "productivity"
+    ],
+    "airtame": [
+      "video-audio"
+    ],
+    "airtool": [
+      "system-utilities",
+      "security"
+    ],
+    "airtrash": [
+      "productivity"
+    ],
+    "airy": [
+      "video-audio"
+    ],
+    "ajour": [
+      "games"
+    ],
+    "akiflow": [
+      "productivity"
+    ],
+    "aks-desktop": [
+      "cloud-devops"
+    ],
+    "akuity": [
+      "cloud-devops"
+    ],
+    "alacritty": [
+      "terminal"
+    ],
+    "aladin": [
+      "education"
+    ],
+    "alchemy": [
+      "graphics"
+    ],
+    "alcom": [
+      "graphics"
+    ],
+    "alcove": [
+      "system-utilities"
+    ],
+    "aldente": [
+      "system-utilities"
+    ],
+    "aleph-one": [
+      "games"
+    ],
+    "alex313031-thorium": [
+      "browsers"
+    ],
+    "alfaview": [
+      "communication"
+    ],
+    "alfred": [
+      "productivity"
+    ],
+    "alfred@4": [
+      "productivity"
+    ],
+    "alfred@prerelease": [
+      "productivity"
+    ],
+    "algoapp": [
+      "education"
+    ],
+    "algodoo": [
+      "games",
+      "education"
+    ],
+    "alienator88-sentinel": [
+      "system-utilities",
+      "security"
+    ],
+    "alifix": [
+      "system-utilities"
+    ],
+    "alipay-key-tool": [
+      "security"
+    ],
+    "alisma": [
+      "system-utilities",
+      "developer-tools"
+    ],
+    "aliwangwang": [
+      "communication"
+    ],
+    "aliworkbench": [
+      "productivity"
+    ],
+    "all-in-one-messenger": [
+      "communication"
+    ],
+    "allen-and-heath-midi-control": [
+      "music",
+      "developer-tools"
+    ],
+    "alloy": [
+      "developer-tools"
+    ],
+    "alma": [
+      "ai",
+      "communication"
+    ],
+    "almighty": [
+      "system-utilities"
+    ],
+    "aloha-browser": [
+      "browsers"
+    ],
+    "alpha": [
+      "writing"
+    ],
+    "alt-tab": [
+      "system-utilities"
+    ],
+    "altair-graphql-client": [
+      "developer-tools"
+    ],
+    "altar-ai": [
+      "ai",
+      "communication"
+    ],
+    "alternote": [
+      "productivity"
+    ],
+    "altserver": [
+      "uncategorized"
+    ],
+    "amadeus-pro": [
+      "video-audio"
+    ],
+    "amadine": [
+      "graphics"
+    ],
+    "amazon-chime": [
+      "communication"
+    ],
+    "amazon-luna": [
+      "games"
+    ],
+    "amazon-music": [
+      "music"
+    ],
+    "amazon-photos": [
+      "productivity"
+    ],
+    "amazon-workspaces": [
+      "cloud-devops"
+    ],
+    "amd-power-gadget": [
+      "system-utilities"
+    ],
+    "amethyst": [
+      "system-utilities"
+    ],
+    "amiberry": [
+      "games"
+    ],
+    "amical": [
+      "ai",
+      "productivity"
+    ],
+    "amie": [
+      "productivity"
+    ],
+    "amitv87-pip": [
+      "system-utilities"
+    ],
+    "ammonite": [
+      "productivity"
+    ],
+    "amneziavpn": [
+      "security"
+    ],
+    "amore": [
+      "developer-tools"
+    ],
+    "ampps": [
+      "developer-tools",
+      "cloud-devops"
+    ],
+    "anaconda": [
+      "developer-tools",
+      "data"
+    ],
+    "ananas-analytics-desktop-edition": [
+      "data"
+    ],
+    "anchor-wallet": [
+      "security"
+    ],
+    "android-commandlinetools": [
+      "developer-tools"
+    ],
+    "android-file-transfer": [
+      "system-utilities"
+    ],
+    "android-ndk": [
+      "developer-tools"
+    ],
+    "android-platform-tools": [
+      "developer-tools"
+    ],
+    "android-studio": [
+      "editors",
+      "developer-tools"
+    ],
+    "android-studio-preview@beta": [
+      "editors",
+      "developer-tools"
+    ],
+    "android-studio-preview@canary": [
+      "editors",
+      "developer-tools"
+    ],
+    "androidtool": [
+      "video-audio",
+      "developer-tools"
+    ],
+    "angband-app": [
+      "games"
+    ],
+    "angry-ip-scanner": [
+      "system-utilities"
+    ],
+    "anka-build-cloud-controller": [
+      "cloud-devops"
+    ],
+    "anka-build-cloud-registry": [
+      "cloud-devops"
+    ],
+    "anka-virtualization": [
+      "cloud-devops",
+      "developer-tools"
+    ],
+    "ankama": [
+      "games"
+    ],
+    "ankermake": [
+      "graphics"
+    ],
+    "ankerwork": [
+      "system-utilities"
+    ],
+    "anki": [
+      "education"
+    ],
+    "another-redis-desktop-manager": [
+      "data",
+      "developer-tools"
+    ],
+    "antconc": [
+      "education"
+    ],
+    "antigravity": [
+      "ai",
+      "cloud-devops"
+    ],
+    "antigravity-cli": [
+      "ai",
+      "developer-tools"
+    ],
+    "antigravity-ide": [
+      "ai",
+      "editors"
+    ],
+    "antinote": [
+      "productivity"
+    ],
+    "anybar": [
+      "system-utilities"
+    ],
+    "anydesk": [
+      "system-utilities"
+    ],
+    "anydo": [
+      "productivity"
+    ],
+    "anylist": [
+      "productivity"
+    ],
+    "anypointstudio": [
+      "editors",
+      "developer-tools"
+    ],
+    "anythingllm": [
+      "ai"
+    ],
+    "anytype": [
+      "productivity",
+      "writing"
+    ],
+    "anytype@alpha": [
+      "productivity",
+      "writing"
+    ],
+    "anytype@beta": [
+      "productivity",
+      "writing"
+    ],
+    "ao": [
+      "productivity"
+    ],
+    "apache-couchdb": [
+      "data"
+    ],
+    "apache-directory-studio": [
+      "developer-tools"
+    ],
+    "ape": [
+      "uncategorized"
+    ],
+    "apidog": [
+      "developer-tools"
+    ],
+    "apidog-europe": [
+      "developer-tools"
+    ],
+    "apifox": [
+      "developer-tools"
+    ],
+    "apipost": [
+      "developer-tools"
+    ],
+    "app-buddy": [
+      "system-utilities"
+    ],
+    "app-cleaner": [
+      "system-utilities"
+    ],
+    "app-fair": [
+      "system-utilities"
+    ],
+    "app-tamer": [
+      "system-utilities"
+    ],
+    "apparency": [
+      "developer-tools"
+    ],
+    "appbox": [
+      "developer-tools"
+    ],
+    "appcleaner": [
+      "system-utilities"
+    ],
+    "appexindexer": [
+      "developer-tools"
+    ],
+    "appflowy": [
+      "productivity"
+    ],
+    "appgate-sdp-client": [
+      "security",
+      "cloud-devops"
+    ],
+    "appgrid": [
+      "system-utilities"
+    ],
+    "appgridmac": [
+      "system-utilities"
+    ],
+    "appium-inspector": [
+      "developer-tools"
+    ],
+    "apple-hewlett-packard-printer-drivers": [
+      "system-utilities"
+    ],
+    "apple-juice": [
+      "system-utilities"
+    ],
+    "applepi-baker": [
+      "system-utilities"
+    ],
+    "applite": [
+      "system-utilities"
+    ],
+    "approf": [
+      "developer-tools"
+    ],
+    "apptivate": [
+      "productivity"
+    ],
+    "apptrap": [
+      "system-utilities"
+    ],
+    "appvolume": [
+      "system-utilities"
+    ],
+    "appzapper": [
+      "system-utilities"
+    ],
+    "aptakube": [
+      "cloud-devops"
+    ],
+    "aptanastudio": [
+      "editors",
+      "developer-tools"
+    ],
+    "aptible": [
+      "cloud-devops",
+      "developer-tools"
+    ],
+    "aqua-app": [
+      "writing"
+    ],
+    "aqua-data-studio": [
+      "data",
+      "developer-tools"
+    ],
+    "aqua-voice": [
+      "system-utilities"
+    ],
+    "aquamacs": [
+      "editors"
+    ],
+    "aquaskk": [
+      "system-utilities"
+    ],
+    "aquaskk@prerelease": [
+      "system-utilities"
+    ],
+    "araxis-merge": [
+      "developer-tools"
+    ],
+    "arc": [
+      "browsers"
+    ],
+    "archaeology": [
+      "developer-tools"
+    ],
+    "archi": [
+      "productivity"
+    ],
+    "archipelago": [
+      "terminal"
+    ],
+    "archiver-app": [
+      "system-utilities"
+    ],
+    "archivewebpage": [
+      "productivity"
+    ],
+    "archy": [
+      "developer-tools"
+    ],
+    "arctic": [
+      "video-audio"
+    ],
+    "arctype": [
+      "data"
+    ],
+    "arduino-ide": [
+      "developer-tools"
+    ],
+    "arduino-ide@nightly": [
+      "developer-tools"
+    ],
+    "ares-emulator": [
+      "games"
+    ],
+    "aria-maestosa": [
+      "music"
+    ],
+    "aria2d": [
+      "system-utilities"
+    ],
+    "ariang": [
+      "system-utilities"
+    ],
+    "arkiwi": [
+      "system-utilities"
+    ],
+    "arm-performance-libraries": [
+      "developer-tools"
+    ],
+    "armory": [
+      "security"
+    ],
+    "arq": [
+      "system-utilities"
+    ],
+    "arq-cloud-backup": [
+      "system-utilities"
+    ],
+    "artisan": [
+      "uncategorized"
+    ],
+    "arturia-software-center": [
+      "music"
+    ],
+    "as-timer": [
+      "productivity"
+    ],
+    "asana": [
+      "productivity"
+    ],
+    "ascension": [
+      "graphics"
+    ],
+    "asciidocfx": [
+      "writing",
+      "developer-tools"
+    ],
+    "asix-ax88179": [
+      "system-utilities"
+    ],
+    "asset-catalog-tinkerer": [
+      "developer-tools"
+    ],
+    "assinador-serpro": [
+      "security"
+    ],
+    "astah-professional": [
+      "developer-tools"
+    ],
+    "astah-uml": [
+      "developer-tools"
+    ],
+    "astro-command-center": [
+      "uncategorized"
+    ],
+    "astro-editor": [
+      "writing"
+    ],
+    "astrofox": [
+      "video-audio",
+      "graphics"
+    ],
+    "astropad-studio": [
+      "graphics"
+    ],
+    "atemosc": [
+      "video-audio"
+    ],
+    "atext": [
+      "productivity"
+    ],
+    "athas": [
+      "editors"
+    ],
+    "atlauncher": [
+      "games"
+    ],
+    "atok": [
+      "system-utilities"
+    ],
+    "atomic-wallet": [
+      "security"
+    ],
+    "attachecase": [
+      "security"
+    ],
+    "atuin-desktop": [
+      "terminal"
+    ],
+    "atv-remote": [
+      "system-utilities"
+    ],
+    "au-lab": [
+      "music"
+    ],
+    "audacity": [
+      "video-audio"
+    ],
+    "audio-hijack": [
+      "video-audio"
+    ],
+    "audio-modeling-software-center": [
+      "music"
+    ],
+    "audiobook-builder": [
+      "video-audio"
+    ],
+    "audiocupcake": [
+      "video-audio"
+    ],
+    "audiogridder-plugin": [
+      "music"
+    ],
+    "audiogridder-server": [
+      "music"
+    ],
+    "audiorelay": [
+      "video-audio"
+    ],
+    "audirvana": [
+      "music"
+    ],
+    "audius": [
+      "music"
+    ],
+    "augur": [
+      "cloud-devops",
+      "developer-tools"
+    ],
+    "aural": [
+      "music"
+    ],
+    "aurora-hdr": [
+      "graphics"
+    ],
+    "ausweisapp": [
+      "security"
+    ],
+    "auto-claude": [
+      "ai",
+      "developer-tools"
+    ],
+    "autodesk-fusion": [
+      "graphics"
+    ],
+    "autodmg": [
+      "system-utilities"
+    ],
+    "autofirma": [
+      "security"
+    ],
+    "autogram": [
+      "security"
+    ],
+    "automattic-texts": [
+      "communication"
+    ],
+    "automounterhelper": [
+      "system-utilities"
+    ],
+    "automute": [
+      "system-utilities"
+    ],
+    "autopkgr": [
+      "developer-tools",
+      "cloud-devops"
+    ],
+    "autovolume": [
+      "system-utilities"
+    ],
+    "autumn": [
+      "system-utilities"
+    ],
+    "avast-secure-browser": [
+      "browsers",
+      "security"
+    ],
+    "avast-security": [
+      "security"
+    ],
+    "avbeam": [
+      "music"
+    ],
+    "avg-antivirus": [
+      "security"
+    ],
+    "aviatrix-vpn-client": [
+      "security",
+      "cloud-devops"
+    ],
+    "avidemux": [
+      "video-audio"
+    ],
+    "avifquicklook": [
+      "system-utilities"
+    ],
+    "avitools": [
+      "video-audio"
+    ],
+    "avogadro": [
+      "graphics",
+      "education"
+    ],
+    "avtouchbar": [
+      "music",
+      "system-utilities"
+    ],
+    "aw-edid-editor": [
+      "developer-tools"
+    ],
+    "awa": [
+      "music"
+    ],
+    "aware": [
+      "system-utilities",
+      "productivity"
+    ],
+    "awesun": [
+      "cloud-devops",
+      "system-utilities"
+    ],
+    "aws-vault-binary": [
+      "security",
+      "developer-tools"
+    ],
+    "aws-vpn-client": [
+      "security",
+      "cloud-devops"
+    ],
+    "axure-rp": [
+      "productivity",
+      "graphics"
+    ],
+    "aya": [
+      "developer-tools"
+    ],
+    "ayugram": [
+      "communication"
+    ],
+    "azookey": [
+      "system-utilities"
+    ],
+    "azure-data-studio": [
+      "data",
+      "developer-tools"
+    ],
+    "ba-connected": [
+      "system-utilities"
+    ],
+    "babeledit": [
+      "writing",
+      "productivity"
+    ],
+    "backblaze": [
+      "system-utilities"
+    ],
+    "backblaze-downloader": [
+      "system-utilities"
+    ],
+    "backblaze-restore": [
+      "system-utilities"
+    ],
+    "backdrop": [
+      "system-utilities"
+    ],
+    "background-music": [
+      "video-audio",
+      "system-utilities"
+    ],
+    "backlog": [
+      "uncategorized"
+    ],
+    "backuploupe": [
+      "system-utilities"
+    ],
+    "backyard-ai": [
+      "ai"
+    ],
+    "badgeify": [
+      "system-utilities",
+      "productivity"
+    ],
+    "badlion-client": [
+      "games"
+    ],
+    "baiduinput": [
+      "uncategorized"
+    ],
+    "baidunetdisk": [
+      "cloud-devops"
+    ],
+    "balance-lock": [
+      "system-utilities"
+    ],
+    "balenaetcher": [
+      "cloud-devops",
+      "developer-tools"
+    ],
+    "ball": [
+      "uncategorized"
+    ],
+    "ballast": [
+      "system-utilities"
+    ],
+    "balsamiq-wireframes": [
+      "graphics"
+    ],
+    "bambu-connect": [
+      "uncategorized"
+    ],
+    "bambu-studio": [
+      "graphics"
+    ],
+    "banana-cake-pop": [
+      "developer-tools"
+    ],
+    "bananas": [
+      "communication"
+    ],
+    "bandage": [
+      "developer-tools"
+    ],
+    "bankid": [
+      "security"
+    ],
+    "banking-4": [
+      "office"
+    ],
+    "banksiagui": [
+      "games"
+    ],
+    "banktivity": [
+      "productivity"
+    ],
+    "baoliandeng": [
+      "security"
+    ],
+    "baretorrent": [
+      "uncategorized"
+    ],
+    "baritone": [
+      "music"
+    ],
+    "barrier": [
+      "system-utilities"
+    ],
+    "bartender": [
+      "system-utilities"
+    ],
+    "base": [
+      "data"
+    ],
+    "basecamp": [
+      "communication",
+      "productivity"
+    ],
+    "basictex": [
+      "developer-tools"
+    ],
+    "batchoutput-pdf": [
+      "office"
+    ],
+    "batfi": [
+      "system-utilities"
+    ],
+    "bathyscaphe": [
+      "browsers"
+    ],
+    "batteries": [
+      "system-utilities"
+    ],
+    "battery": [
+      "system-utilities"
+    ],
+    "battery-buddy": [
+      "system-utilities"
+    ],
+    "batteryboi": [
+      "system-utilities"
+    ],
+    "battle-net": [
+      "games"
+    ],
+    "battlescribe": [
+      "productivity"
+    ],
+    "bazecor": [
+      "system-utilities"
+    ],
+    "bbackupp": [
+      "system-utilities"
+    ],
+    "bbedit": [
+      "editors"
+    ],
+    "bbedit@14": [
+      "editors"
+    ],
+    "bcut": [
+      "video-audio"
+    ],
+    "bdash": [
+      "data",
+      "developer-tools"
+    ],
+    "bdinfo": [
+      "video-audio"
+    ],
+    "beacon-scanner": [
+      "system-utilities"
+    ],
+    "beamer": [
+      "video-audio"
+    ],
+    "bean": [
+      "office"
+    ],
+    "beardedspice": [
+      "music"
+    ],
+    "beardie": [
+      "music"
+    ],
+    "beast2": [
+      "developer-tools"
+    ],
+    "beatunes": [
+      "music"
+    ],
+    "beaver-notes": [
+      "productivity",
+      "writing"
+    ],
+    "beekeeper-studio": [
+      "data",
+      "developer-tools"
+    ],
+    "beeper": [
+      "communication"
+    ],
+    "beersmith": [
+      "uncategorized"
+    ],
+    "beid-token": [
+      "security"
+    ],
+    "beid-viewer": [
+      "security"
+    ],
+    "bentobox": [
+      "system-utilities"
+    ],
+    "bepo": [
+      "system-utilities"
+    ],
+    "berrycast": [
+      "video-audio"
+    ],
+    "bespoke": [
+      "music"
+    ],
+    "bestres": [
+      "system-utilities"
+    ],
+    "betaflight-configurator": [
+      "developer-tools"
+    ],
+    "betelguese": [
+      "uncategorized"
+    ],
+    "better-window-manager": [
+      "system-utilities"
+    ],
+    "betterandbetter": [
+      "system-utilities"
+    ],
+    "bettercapture": [
+      "video-audio"
+    ],
+    "betterdiscord-installer": [
+      "communication"
+    ],
+    "betterdisplay": [
+      "system-utilities"
+    ],
+    "bettermouse": [
+      "system-utilities"
+    ],
+    "bettershot": [
+      "video-audio"
+    ],
+    "bettertouchtool": [
+      "system-utilities"
+    ],
+    "bettertouchtool@alpha": [
+      "system-utilities"
+    ],
+    "betterzip": [
+      "system-utilities"
+    ],
+    "betwixt": [
+      "developer-tools"
+    ],
+    "beutl": [
+      "video-audio"
+    ],
+    "beyond-compare": [
+      "developer-tools"
+    ],
+    "beyond-compare@4": [
+      "developer-tools"
+    ],
+    "beyond-compare@beta": [
+      "developer-tools"
+    ],
+    "bezel": [
+      "video-audio"
+    ],
+    "bfxr": [
+      "music"
+    ],
+    "bias-fx": [
+      "music"
+    ],
+    "bibdesk": [
+      "office"
+    ],
+    "big-mean-folder-machine": [
+      "system-utilities"
+    ],
+    "biglybt": [
+      "uncategorized"
+    ],
+    "bike": [
+      "productivity",
+      "writing"
+    ],
+    "bili-downloader": [
+      "video-audio"
+    ],
+    "bilibili": [
+      "communication"
+    ],
+    "bilimini": [
+      "communication"
+    ],
+    "billings-pro": [
+      "office"
+    ],
+    "billy-frontier": [
+      "games"
+    ],
+    "binance": [
+      "uncategorized"
+    ],
+    "binary-ninja-free": [
+      "developer-tools"
+    ],
+    "bindiff": [
+      "developer-tools"
+    ],
+    "bing-wallpaper": [
+      "system-utilities"
+    ],
+    "bino": [
+      "video-audio"
+    ],
+    "birdfont": [
+      "graphics"
+    ],
+    "biscuit": [
+      "productivity"
+    ],
+    "bison-wallet": [
+      "uncategorized"
+    ],
+    "bisq": [
+      "uncategorized"
+    ],
+    "bit-fiddle": [
+      "developer-tools"
+    ],
+    "bit-slicer": [
+      "games"
+    ],
+    "bitbar": [
+      "system-utilities"
+    ],
+    "bitbox": [
+      "security"
+    ],
+    "bitcoin-core": [
+      "security"
+    ],
+    "bitfocus-buttons": [
+      "productivity",
+      "system-utilities"
+    ],
+    "bitmessage": [
+      "communication",
+      "security"
+    ],
+    "bitrix24": [
+      "productivity",
+      "communication"
+    ],
+    "bitwarden": [
+      "security"
+    ],
+    "bitwig-studio": [
+      "music"
+    ],
+    "black-ink": [
+      "games"
+    ],
+    "black-light": [
+      "system-utilities"
+    ],
+    "black-light-pro": [
+      "system-utilities"
+    ],
+    "blackhole-16ch": [
+      "video-audio"
+    ],
+    "blackhole-2ch": [
+      "video-audio"
+    ],
+    "blackhole-64ch": [
+      "video-audio"
+    ],
+    "blankie": [
+      "music"
+    ],
+    "blender": [
+      "graphics"
+    ],
+    "blender-benchmark": [
+      "graphics"
+    ],
+    "blender@lts": [
+      "graphics"
+    ],
+    "bleunlock": [
+      "security",
+      "system-utilities"
+    ],
+    "blheli-configurator": [
+      "uncategorized"
+    ],
+    "blink1control": [
+      "system-utilities"
+    ],
+    "blip": [
+      "productivity"
+    ],
+    "blisk": [
+      "browsers",
+      "developer-tools"
+    ],
+    "blitz-gg": [
+      "games"
+    ],
+    "blobby-volley2": [
+      "games"
+    ],
+    "blobsaver": [
+      "developer-tools"
+    ],
+    "block-goose": [
+      "ai"
+    ],
+    "blockbench": [
+      "graphics"
+    ],
+    "blockblock": [
+      "security"
+    ],
+    "blockstream": [
+      "security"
+    ],
+    "blocs": [
+      "graphics"
+    ],
+    "blood-on-the-clocktower-online": [
+      "games"
+    ],
+    "bloodhound": [
+      "security",
+      "cloud-devops"
+    ],
+    "bloom": [
+      "system-utilities"
+    ],
+    "bloop": [
+      "developer-tools"
+    ],
+    "blu-ray-player": [
+      "video-audio"
+    ],
+    "blu-ray-player-pro": [
+      "video-audio"
+    ],
+    "bluebubbles": [
+      "communication"
+    ],
+    "bluefish": [
+      "editors"
+    ],
+    "bluegriffon": [
+      "editors"
+    ],
+    "blueharvest": [
+      "system-utilities"
+    ],
+    "bluej": [
+      "developer-tools",
+      "education"
+    ],
+    "bluesense": [
+      "system-utilities"
+    ],
+    "bluesnooze": [
+      "system-utilities"
+    ],
+    "bluestacks": [
+      "games"
+    ],
+    "bluetility": [
+      "developer-tools",
+      "system-utilities"
+    ],
+    "bluewallet": [
+      "security"
+    ],
+    "bluos-controller": [
+      "music"
+    ],
+    "blurred": [
+      "system-utilities"
+    ],
+    "blurscreen": [
+      "system-utilities"
+    ],
+    "bob-app": [
+      "productivity"
+    ],
+    "bobhelper": [
+      "productivity"
+    ]
+  },
+  "formulae": {}
+}

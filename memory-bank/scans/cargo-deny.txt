@@ -1,0 +1,3 @@
+          └── toml v1.1.2+spec-1.1.0 (*)
+
+advisories ok, bans ok, licenses ok, sources ok

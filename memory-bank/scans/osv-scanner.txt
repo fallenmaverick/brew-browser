@@ -1,0 +1,32 @@
+Scanning dir .
+Starting filesystem walk for root: /
+Scanned /Users/michael/Clean/brew-browser/package-lock.json file and found 122 packages
+Scanned /Users/michael/Clean/brew-browser/src-tauri/Cargo.lock file and found 540 packages
+End status: 40 dirs visited, 213 inodes visited, 2 Extract calls, 7.86175ms elapsed, 7.862ms wall time
+
+Total 18 packages affected by 18 known vulnerabilities (0 Critical, 0 High, 1 Medium, 0 Low, 17 Unknown) from 2 ecosystems.
+2 vulnerabilities can be fixed.
+
++-------------------------------------+------+-----------+--------------------+---------+---------------+----------------------+
+| OSV URL                             | CVSS | ECOSYSTEM | PACKAGE            | VERSION | FIXED VERSION | SOURCE               |
++-------------------------------------+------+-----------+--------------------+---------+---------------+----------------------+
+| https://osv.dev/RUSTSEC-2024-0413   |      | crates.io | atk                | 0.18.2  | --            | src-tauri/Cargo.lock |
+| https://osv.dev/RUSTSEC-2024-0416   |      | crates.io | atk-sys            | 0.18.2  | --            | src-tauri/Cargo.lock |
+| https://osv.dev/RUSTSEC-2024-0412   |      | crates.io | gdk                | 0.18.2  | --            | src-tauri/Cargo.lock |
+| https://osv.dev/RUSTSEC-2024-0418   |      | crates.io | gdk-sys            | 0.18.2  | --            | src-tauri/Cargo.lock |
+| https://osv.dev/RUSTSEC-2024-0411   |      | crates.io | gdkwayland-sys     | 0.18.2  | --            | src-tauri/Cargo.lock |
+| https://osv.dev/RUSTSEC-2024-0417   |      | crates.io | gdkx11             | 0.18.2  | --            | src-tauri/Cargo.lock |
+| https://osv.dev/RUSTSEC-2024-0414   |      | crates.io | gdkx11-sys         | 0.18.2  | --            | src-tauri/Cargo.lock |
+| https://osv.dev/RUSTSEC-2024-0429   | 6.9  | crates.io | glib               | 0.18.5  | 0.20.0        | src-tauri/Cargo.lock |
+| https://osv.dev/GHSA-wrw7-89jp-8q8g |      |           |                    |         |               |                      |
+| https://osv.dev/RUSTSEC-2024-0415   |      | crates.io | gtk                | 0.18.2  | --            | src-tauri/Cargo.lock |
+| https://osv.dev/RUSTSEC-2024-0420   |      | crates.io | gtk-sys            | 0.18.2  | --            | src-tauri/Cargo.lock |
+| https://osv.dev/RUSTSEC-2024-0419   |      | crates.io | gtk3-macros        | 0.18.2  | --            | src-tauri/Cargo.lock |
+| https://osv.dev/RUSTSEC-2024-0370   |      | crates.io | proc-macro-error   | 1.0.4   | --            | src-tauri/Cargo.lock |
+| https://osv.dev/RUSTSEC-2025-0081   |      | crates.io | unic-char-property | 0.9.0   | --            | src-tauri/Cargo.lock |
+| https://osv.dev/RUSTSEC-2025-0075   |      | crates.io | unic-char-range    | 0.9.0   | --            | src-tauri/Cargo.lock |
+| https://osv.dev/RUSTSEC-2025-0080   |      | crates.io | unic-common        | 0.9.0   | --            | src-tauri/Cargo.lock |
+| https://osv.dev/RUSTSEC-2025-0100   |      | crates.io | unic-ucd-ident     | 0.9.0   | --            | src-tauri/Cargo.lock |
+| https://osv.dev/RUSTSEC-2025-0098   |      | crates.io | unic-ucd-version   | 0.9.0   | --            | src-tauri/Cargo.lock |
+| https://osv.dev/GHSA-pxg6-pf52-xh8x |      | npm       | cookie (dev)       | 0.6.0   | 0.7.0         | package-lock.json    |
++-------------------------------------+------+-----------+--------------------+---------+---------------+----------------------+

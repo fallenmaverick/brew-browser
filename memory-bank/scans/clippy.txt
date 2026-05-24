@@ -1,0 +1,15 @@
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.95.0/index.html#len_zero
+
+error: the borrowed expression implements the required traits
+    --> src/commands/brewfile.rs:1103:36
+     |
+1103 |         std::fs::write(tmp.path(), &[0u8, 0x89, b'P', b'N', b'G']).expect("write");
+     |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: change this to: `[0u8, 0x89, b'P', b'N', b'G']`
+     |
+     = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.95.0/index.html#needless_borrows_for_generic_args
+     = note: `-D clippy::needless-borrows-for-generic-args` implied by `-D warnings`
+     = help: to override `-D warnings` add `#[allow(clippy::needless_borrows_for_generic_args)]`
+
+error: could not compile `brew-browser` (lib) due to 6 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `brew-browser` (lib test) due to 9 previous errors
