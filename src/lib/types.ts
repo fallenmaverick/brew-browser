@@ -199,6 +199,89 @@ export interface BrewfileCheckReport {
 }
 
 // =========================================================
+// 2.9.1 Categories (Phase 9)
+// =========================================================
+
+/**
+ * One entry in the `categories` map of `categories.json`. The backend bundles
+ * the JSON at compile time (see `commands/categories.rs`) so this shape must
+ * match the Rust `CategoryMeta` struct.
+ *
+ * `icon` is the PascalCase name of a Lucide icon (e.g. "Cloud", "Brain"). The
+ * frontend resolves it via a static map in `lib/util/categoryIcon.ts` rather
+ * than dynamic imports.
+ */
+export interface CategoryMeta {
+  label: string;
+  icon: string;
+}
+
+/**
+ * Full payload of `categories_data`. `casks` and `formulae` map token → array
+ * of category slugs (multiple categories per item is the norm).
+ */
+export interface CategoriesData {
+  version: string;
+  generatedAt: string;
+  model: string;
+  categories: Record<string, CategoryMeta>;
+  casks: Record<string, string[]>;
+  formulae: Record<string, string[]>;
+}
+
+// =========================================================
+// 2.9.3 Services (brew services)
+// =========================================================
+
+/**
+ * Raw status string from `brew services list --json`. Observed values:
+ * "started", "stopped", "none", "error", "scheduled", "unknown".
+ * The frontend treats unknown values as `unknown` rather than crashing.
+ */
+export interface Service {
+  name: string;
+  status: string;
+  user: string | null;
+  file: string | null;
+  exitCode: number | null;
+}
+
+/** Normalised status for the UI's tone/icon mapping. */
+export type ServiceStatus = "started" | "stopped" | "none" | "error" | "scheduled" | "unknown";
+
+export function normalizeServiceStatus(raw: string): ServiceStatus {
+  switch (raw) {
+    case "started":   return "started";
+    case "stopped":   return "stopped";
+    case "none":      return "none";
+    case "error":     return "error";
+    case "scheduled": return "scheduled";
+    default:          return "unknown";
+  }
+}
+
+// =========================================================
+// 2.9.2 Disk usage (Dashboard Storage card)
+// =========================================================
+
+export interface DiskUsageEntry {
+  label: string;
+  path: string;
+  bytes: number;
+  exists: boolean;
+  error: string | null;
+}
+
+export interface DiskUsageReport {
+  generatedAt: string;
+  prefix: string;
+  cacheDir: string;
+  entries: DiskUsageEntry[];
+  totalBytes: number;
+  cacheAgeSeconds: number;
+}
+
+// =========================================================
 // 2.9 Trending (Phase 6)
 // =========================================================
 
@@ -268,10 +351,12 @@ export function brewErrorMessage(e: BrewErrorPayload): string {
 // =========================================================
 
 export type SidebarSection =
+  | "dashboard"
   | "library"
   | "discover"
   | "trending"
   | "snapshots"
+  | "services"
   | "activity";
 
 export type ThemePreference = "light" | "dark" | "system";

@@ -2,38 +2,96 @@
   import { onMount } from "svelte";
   import RefreshCw from "@lucide/svelte/icons/refresh-cw";
   import PackageIcon from "@lucide/svelte/icons/package";
+  import XIcon from "@lucide/svelte/icons/x";
 
   import Input from "./Input.svelte";
   import Button from "./Button.svelte";
   import PackageRow from "./PackageRow.svelte";
   import LoadingState from "./LoadingState.svelte";
   import EmptyState from "./EmptyState.svelte";
+  import SortableHeader from "./SortableHeader.svelte";
   import { packages } from "$lib/stores/packages.svelte";
   import { ui } from "$lib/stores/ui.svelte";
+  import { categories } from "$lib/stores/categories.svelte";
+  import { discover } from "$lib/stores/discover.svelte";
+  import { library, type LibraryFilter } from "$lib/stores/library.svelte";
+  import { resolveCategoryIcon } from "$lib/util/categoryIcon";
   import type { Package } from "$lib/types";
 
-  type Filter = "all" | "formulae" | "casks" | "outdated";
+  type SortKey = "name" | "version" | "kind" | "outdated";
+  type SortDir = "asc" | "desc";
 
-  let filter: Filter = $state("all");
   let query = $state("");
+  let sortKey: SortKey = $state("name");
+  let sortDir: SortDir = $state("asc");
+
+  // Library shares the Discover store's chip selection so jumping back-and-forth
+  // between tabs keeps context. Categories load is idempotent.
+  categories.ensureLoaded();
 
   let filtered = $derived.by<Package[]>(() => {
     let base: Package[];
-    switch (filter) {
+    switch (library.filter) {
       case "formulae": base = packages.formulae; break;
       case "casks":    base = packages.casks; break;
       case "outdated": base = packages.outdated; break;
       default:         base = packages.all;
     }
     const q = query.trim().toLowerCase();
-    if (!q) return base;
-    return base.filter((p) =>
-      p.name.toLowerCase().includes(q) ||
-      (p.description?.toLowerCase().includes(q) ?? false)
-    );
+    let result = q
+      ? base.filter((p) =>
+          p.name.toLowerCase().includes(q) ||
+          (p.description?.toLowerCase().includes(q) ?? false),
+        )
+      : base;
+
+    if (discover.hasFilter) {
+      result = result.filter((p) => {
+        const cats = categories.categoriesOf(p.name, p.kind);
+        for (const c of cats) {
+          if (discover.selectedCategories.has(c)) return true;
+        }
+        return false;
+      });
+    }
+    return result;
   });
 
-  let sorted = $derived([...filtered].sort((a, b) => a.name.localeCompare(b.name)));
+  let sorted = $derived.by<Package[]>(() => {
+    const arr = [...filtered];
+    const mul = sortDir === "asc" ? 1 : -1;
+    arr.sort((a, b) => {
+      let cmp = 0;
+      switch (sortKey) {
+        case "name":
+          cmp = a.name.localeCompare(b.name);
+          break;
+        case "version":
+          cmp = (a.installedVersion ?? "").localeCompare(b.installedVersion ?? "");
+          break;
+        case "kind":
+          cmp = a.kind.localeCompare(b.kind);
+          break;
+        case "outdated":
+          // outdated rows surface first when ascending; tiebreak by name.
+          cmp = Number(b.outdated) - Number(a.outdated);
+          if (cmp === 0) cmp = a.name.localeCompare(b.name);
+          break;
+      }
+      return cmp * mul;
+    });
+    return arr;
+  });
+
+  function changeSort(key: string) {
+    const k = key as SortKey;
+    if (sortKey === k) {
+      sortDir = sortDir === "asc" ? "desc" : "asc";
+    } else {
+      sortKey = k;
+      sortDir = "asc";
+    }
+  }
 
   onMount(() => { packages.load(); });
 
@@ -43,12 +101,12 @@
 </script>
 
 <section class="library">
-  <header class="panel-head">
+  <header class="panel-head" data-tauri-drag-region>
     <div class="head-left">
       <h1>Library</h1>
       <span class="count text-muted">{packages.all.length} installed</span>
     </div>
-    <div class="head-right">
+    <div class="head-right" data-tauri-drag-region="false">
       <Input bind:value={query} placeholder="Filter…" variant="search" size="sm" ariaLabel="Filter installed packages" />
       <Button size="sm" variant="ghost" onclick={() => packages.load(true)} ariaLabel="Refresh" title="Refresh (⌘R)">
         {#snippet icon()}<RefreshCw size={14} />{/snippet}
@@ -59,13 +117,13 @@
 
   <div class="filter-bar">
     <div class="pillgroup" role="tablist" aria-label="Type filter">
-      {#each (["all","formulae","casks","outdated"] as Filter[]) as f (f)}
+      {#each (["all","formulae","casks","outdated"] as LibraryFilter[]) as f (f)}
         {@const count = f === "outdated" ? packages.outdated.length : null}
         <button
           role="tab"
-          aria-selected={filter === f}
-          class:on={filter === f}
-          onclick={() => (filter = f)}
+          aria-selected={library.filter === f}
+          class:on={library.filter === f}
+          onclick={() => library.setFilter(f)}
         >
           {f === "all" ? "All" : f[0].toUpperCase() + f.slice(1)}
           {#if count !== null && count > 0}
@@ -74,6 +132,26 @@
         </button>
       {/each}
     </div>
+
+    {#if discover.hasFilter}
+      <div class="chip-bar" aria-label="Active category filters">
+        {#each [...discover.selectedCategories] as slug (slug)}
+          {@const Icon = resolveCategoryIcon(
+            categories.data?.categories[slug]?.icon ?? "HelpCircle",
+          )}
+          <button
+            class="chip on"
+            onclick={() => discover.toggle(slug)}
+            aria-label={`Remove ${categories.labelOf(slug)} filter`}
+          >
+            <Icon size={12} />
+            <span>{categories.labelOf(slug)}</span>
+            <XIcon size={12} />
+          </button>
+        {/each}
+        <button class="chip-clear" onclick={() => discover.clear()}>Clear</button>
+      </div>
+    {/if}
   </div>
 
   <div class="list-wrap">
@@ -91,21 +169,35 @@
       </EmptyState>
     {:else if sorted.length === 0}
       <EmptyState
-        title={query ? `Nothing matches "${query}"` : "No packages installed."}
-        body={query ? "Try a shorter or different term." : "`brew install wget` would be a fine start. Or open Discover to look around."}
+        title={query
+          ? `Nothing matches "${query}"`
+          : discover.hasFilter
+            ? "No installed packages in the selected categories."
+            : "No packages installed."}
+        body={query
+          ? "Try a shorter or different term."
+          : discover.hasFilter
+            ? "Remove a chip or open Discover to find more."
+            : "`brew install wget` would be a fine start. Or open Discover to look around."}
       >
         {#snippet icon()}<PackageIcon size={48} />{/snippet}
         {#snippet cta()}
-          {#if !query}
-            <Button variant="primary" onclick={() => ui.setSection("discover")}>Open Discover</Button>
-          {:else}
+          {#if query}
             <Button variant="secondary" onclick={() => (query = "")}>Clear filter</Button>
+          {:else if discover.hasFilter}
+            <Button variant="secondary" onclick={() => discover.clear()}>Clear categories</Button>
+          {:else}
+            <Button variant="primary" onclick={() => ui.setSection("discover")}>Open Discover</Button>
           {/if}
         {/snippet}
       </EmptyState>
     {:else}
-      <div class="list-header" aria-hidden="true">
-        <span></span><span>Name</span><span>Version</span><span>Type</span><span>Outdated</span>
+      <div class="list-header" role="row">
+        <span></span>
+        <SortableHeader label="Name" sortKey="name" active={sortKey === "name"} dir={sortDir} onSort={changeSort} />
+        <SortableHeader label="Version" sortKey="version" active={sortKey === "version"} dir={sortDir} onSort={changeSort} />
+        <SortableHeader label="Type" sortKey="kind" active={sortKey === "kind"} dir={sortDir} onSort={changeSort} />
+        <SortableHeader label="Outdated" sortKey="outdated" active={sortKey === "outdated"} dir={sortDir} onSort={changeSort} />
       </div>
       <div class="list" role="list" aria-label="Installed packages">
         {#each sorted as p (p.fullName + p.kind)}
@@ -138,7 +230,13 @@
   .head-right { display: flex; align-items: center; gap: var(--space-2); }
   .count { font-size: var(--text-body-sm); }
 
-  .filter-bar { padding: var(--space-2) var(--space-4); border-bottom: 1px solid var(--color-border); }
+  .filter-bar {
+    padding: var(--space-2) var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
   .pillgroup {
     display: inline-flex;
     border: 1px solid var(--color-border);
@@ -146,6 +244,7 @@
     border-radius: var(--radius-md);
     padding: 2px;
     gap: 2px;
+    width: max-content;
   }
   .pillgroup button {
     padding: var(--space-1) var(--space-3);
@@ -174,6 +273,43 @@
     font-weight: var(--fw-semibold);
   }
 
+  .chip-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px var(--space-2);
+    height: 22px;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface-sunken);
+    color: var(--color-text-secondary);
+    font-size: var(--text-body-sm);
+    font-weight: var(--fw-medium);
+    line-height: 1;
+    cursor: pointer;
+  }
+  .chip:hover { color: var(--color-text-primary); }
+  .chip.on {
+    background: var(--color-brand-subtle);
+    border-color: var(--color-brand);
+    color: var(--color-text-primary);
+  }
+  .chip-clear {
+    padding: 2px var(--space-2);
+    height: 22px;
+    border-radius: var(--radius-sm);
+    color: var(--color-text-muted);
+    font-size: var(--text-body-sm);
+    background: transparent;
+  }
+  .chip-clear:hover { color: var(--color-text-primary); }
+
   .list-wrap {
     flex: 1;
     overflow-y: auto;
@@ -181,16 +317,13 @@
   }
   .list-header {
     display: grid;
-    grid-template-columns: 24px 1fr 120px 80px 120px;
+    /* minmax(0, 1fr) on the name column so long package names don't push the
+       version/type/outdated cells rightward — matches PackageRow.svelte. */
+    grid-template-columns: 24px minmax(0, 1fr) 120px 80px 120px;
     gap: var(--space-3);
     padding: var(--space-2) var(--space-3);
     background: var(--color-surface);
     border-bottom: 1px solid var(--color-border);
-    color: var(--color-text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    font-size: var(--text-caption);
-    font-weight: var(--fw-semibold);
     position: sticky;
     top: 0;
     z-index: 1;

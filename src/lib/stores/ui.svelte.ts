@@ -21,7 +21,9 @@ export function clampDetailPaneWidth(w: number, windowWidth?: number): number {
 }
 
 class UiStore {
-  section: SidebarSection = $state("library");
+  /** First-launch landing. Dashboard is the home screen; clicking the sidebar
+      brand returns here. Other sections live below it in the nav. */
+  section: SidebarSection = $state("dashboard");
   drawerOpen: boolean = $state(false);
   drawerMinimized: boolean = $state(false);
   paletteOpen: boolean = $state(false);

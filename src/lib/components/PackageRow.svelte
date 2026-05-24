@@ -81,7 +81,10 @@
 <style>
   .row {
     display: grid;
-    grid-template-columns: 24px 1fr 120px 80px 120px;
+    /* minmax(0, 1fr) on the name column — without it, long names like
+       "claude-code-templates" expand the 1fr beyond its share, pushing the
+       version/type/outdated columns rightward inconsistently across rows. */
+    grid-template-columns: 24px minmax(0, 1fr) 120px 80px 120px;
     align-items: center;
     width: 100%;
     min-height: 36px;

@@ -67,3 +67,124 @@
 - Prevents data corruption with zero user-visible cost (queue and show queue state)
 - Implementation is ~10 LOC
 - Future: per-command-class mutex if read-only ops (`list`, `info`, `search`) should run in parallel with writes
+
+---
+
+## 2026-05-24-night: Dashboard is the default landing, brand area is the home button
+
+**Context:** First-launch UX dropped users into a 325-row Library list — overwhelming. Need a friendlier "state of your setup" first impression. Open question: separate sidebar item or repurpose the brand area as the home affordance?
+
+**Decision:** Dashboard becomes the default `ui.section` (over Library). The sidebar brand (`🍺 brew-browser`) is the home button — clicking it returns to Dashboard. No separate "Dashboard" nav item in the sidebar list; brand = logo = home, in line with how web apps work.
+
+**Rationale:**
+- First impression frames the relationship: "this is your setup" rather than "here's a list"
+- Brand-as-home mirrors universal web-app convention; users already try clicking the logo
+- Keeps the sidebar nav list tight (5 items: Library/Discover/Trending/Snapshots/Services/Activity)
+- Cmd+0 reserves a stable keyboard shortcut for home, parallel to Cmd+1..6 for sections
+
+**Trade-off accepted:** Discoverability of Cmd+0 is weaker than a visible nav item, but the brand's active state (background highlight when on Dashboard) provides visual feedback. Power users learn shortcuts; everyone else clicks the brand.
+
+---
+
+## 2026-05-24-night: Vibrancy via `window-vibrancy` (Tier A), Tahoe Liquid Glass deferred
+
+**Context:** Requested "native feel" / Liquid Glass treatment. Tier A = NSVisualEffectView via `tauri-plugin-window-vibrancy` (works since macOS 13, ~30 min to wire). Tier B = true Tahoe Liquid Glass via Swift bridge (Tahoe-only, half day).
+
+**Decision:** Ship Tier A this session. Defer Tier B to v0.2.
+
+**Rationale:**
+- Tier A delivers 80% of the visual win for 20% of the work
+- Works across all supported macOS versions (13+) — Tier B would gate the feel on macOS 26 only
+- Tier B's Swift bridge is reversible — we can layer it on top of Tier A later without breaking anything
+- Surfaces a real `core:window:allow-start-dragging` capability requirement which had to be added regardless
+
+**Implementation notes:**
+- `tauri.conf.json`: `transparent: true`, `titleBarStyle: "Overlay"`, `hiddenTitle: true`
+- Apply `NSVisualEffectMaterial::HudWindow` in `lib.rs` setup hook
+- Body background must be transparent in CSS for the vibrancy to show through
+- Drag regions use `data-tauri-drag-region` attribute on real DOM elements (NOT a fixed overlay, which intercepts scroll wheel events) — added via the new capability
+
+---
+
+## 2026-05-24-night: Categories donut chart (top 8 + Other), not bar list
+
+**Context:** First implementation was a horizontal bar list per category. Two bugs surfaced: (a) bar fill color matched track in dark mode so bars looked empty, (b) when one category dwarfs the rest (Developer Tools at 256 vs next at 29), small bars are visually meaningless.
+
+**Decision:** Donut chart with top 8 individually segmented + "Other" slice. Clickable legend on the right.
+
+**Rationale:**
+- Donut conveys *proportion at a glance* better than tiny bars
+- Color encodes category (palette-rotated) — no fill/track collision possible
+- Top 8 + Other is a standard pattern for long-tail distributions
+- Legend rows double as nav: click → Discover with category chip selected
+- 180px donut + SVG arcs = ~30 lines of CSS, no chart lib needed
+
+**Math:** Each segment is a `<circle>` with the donut's full circumference as `stroke-dasharray` second value, with first value = `(pct/100) * C`. `stroke-dashoffset = -(startPct/100) * C` shifts each segment to start at the right angle. `transform="rotate(-90)"` puts segment 0 at 12 o'clock.
+
+---
+
+## 2026-05-24-night: `du -sk` over native walk for disk usage
+
+**Context:** Need to size 4 Homebrew sub-trees (Cellar, Caskroom, var/log, cache). Could walk filesystem in Rust or shell out to `du`.
+
+**Decision:** Shell out to `du -sk <path>` in parallel via `tokio::join!`.
+
+**Rationale:**
+- BSD `du` is highly optimised (cached inode stats, sparse-file aware)
+- Single syscall per path vs O(n) recursion in Rust + serde overhead
+- Parallel via `tokio::join!` keeps wall time = max(4 paths) not sum
+- 60s cache on AppState means subsequent reads cost nothing
+- Output parsing is trivial: `<kb><tab><path>`
+
+**Trade-off accepted:** Shells out to an external binary. But we already shell out to `brew` everywhere; `du` is a base-system tool that's been on every Unix for 40+ years and can't reasonably be missing.
+
+---
+
+## 2026-05-24-night: Bundled catalog + user-initiated refresh (Phase 12a — planned)
+
+**Context:** formulae.brew.sh exposes the entire Homebrew catalog as JSON (~10 MB raw). Caching it locally unlocks fast search, deprecation warnings, build-error stats, reverse deps, and more. But network calls without consent break the project posture; auto-refresh without explicit user action would add a quiet 5th outbound network path.
+
+**Decision:**
+- **Bundle a baseline catalog at build time** via `include_bytes!` + gzip (~3 MB compressed)
+- **User-initiated refresh** only: a button writes a fresh fetch to `~/Library/Application Support/brew-browser/catalog/`
+- **Resolution order at runtime:** user-data catalog (if present) → bundled fallback
+- **Soft nudge** (banner) when active catalog is older than 14 days; dismissable
+- **No auto-refresh** by default; deferred opt-in setting later
+
+**Rationale:**
+- Matches the project posture: every network path is disclosed in README and user-consented
+- Baseline-in-binary keeps the app fully functional offline / first-launch
+- Manual refresh respects user agency; freshness is visible (timestamp shown)
+- Unblocks deprecation warnings, build-error rates, reverse deps, dependency tree, Brewfile validation, "what's new this week" feed — all become catalog reads instead of fresh network fetches
+
+**Network disclosure:** Adds a 5th outbound path, explicitly labeled "user-initiated only".
+
+---
+
+## 2026-05-24-night: GitHub integration via Device Flow (Phase 12c–f — planned)
+
+**Context:** Many packages have GitHub homepages — stars/forks/last-release would enrich PackageDetail. User-authenticated actions (star, file issue, watch) are bigger wins but require OAuth. Native apps can't safely embed client secrets, so PKCE/Implicit are out.
+
+**Decision:** Two-tier GitHub integration.
+
+**Tier 1 — anonymous (no sign-in):**
+- Detect GitHub homepage URLs (`/^https?:\/\/github\.com\/(\w+)\/(\w+)$/`)
+- Hit public api.github.com (60 reqs/hr anon limit)
+- 24h disk cache per repo
+- Show: stars, forks, last release date, archived flag, license match-check
+- Graceful degradation when rate-limited
+
+**Tier 2 — signed in (OAuth Device Flow):**
+- Setting: "Sign in with GitHub"
+- Device Flow (RFC 8628): no client secret needed for native apps, designed for them
+- Token stored in macOS Keychain via `tauri-plugin-keyring` (or similar)
+- Rate limit goes to 5000/hr
+- Unlocks: star/unstar, file issue (with pre-filled context), watch, "Wrong?" reporting
+
+**Rationale:**
+- Anonymous tier ships value immediately, no consent friction beyond toggling on
+- Device Flow is the correct OAuth profile for native apps — no localhost redirect, no embedded WebView, no client secret in shipped binary
+- Keychain storage matches platform expectations; no plaintext tokens on disk
+- Two-tier respects users who want zero-account posture (default = off entirely) and power users who want full integration
+
+**Trade-off accepted:** Anonymous tier consumes the 60 reqs/hr per IP — heavy browsing may rate-limit. Pitch sign-in when this happens.

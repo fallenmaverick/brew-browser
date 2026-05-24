@@ -28,6 +28,24 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             state::initialize(app)?;
+            #[cfg(target_os = "macos")]
+            {
+                // Apply NSVisualEffectView to the main window so it picks up the
+                // native macOS "frosted glass" appearance. Material::HudWindow
+                // gives a slightly heavier blur that looks good behind the
+                // sidebar and main panes; the WebView background must be set
+                // transparent in CSS (see app.css :root) for the blur to show.
+                use tauri::Manager;
+                use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectState};
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = apply_vibrancy(
+                        &window,
+                        NSVisualEffectMaterial::HudWindow,
+                        Some(NSVisualEffectState::Active),
+                        None,
+                    );
+                }
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -54,6 +72,15 @@ pub fn run() {
             trending_clear_cache,
             cask_icon,
             cask_icon_from_homepage,
+            categories_data,
+            disk_usage,
+            disk_usage_clear_cache,
+            open_in_finder,
+            services_list,
+            services_clear_cache,
+            services_start,
+            services_stop,
+            services_restart,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

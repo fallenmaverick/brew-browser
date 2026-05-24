@@ -31,19 +31,71 @@
 | Reframe pass | ✅ counter-narrative dropped from all docs |
 | Categorize tool + bulk run | ✅ 15,974 items via Claude Haiku 4.5 |
 | Landing page + SEO/social | ✅ deployed to umbp |
-| **v0.1.0 GitHub release** | ⏸ pending Apple cert install |
-| **Phase 9 — Discover category tile UI + Wrong-link** | pending |
-| **Phase 10 — Recipes** (multi-package guided installs) | future |
+| **v0.1.0 GitHub release** | ✅ SHIPPED — signed/notarized .dmg attached at <https://github.com/msitarzewski/brew-browser/releases/tag/v0.1.0> |
+| **Phase 9a — Discover category tile UI** | ✅ tile grid + filtered view + Lucide icons, uncommitted |
+| **Phase 9b — Category linking pass** | ✅ multi-select chip filter (Discover + Library), category pills on PackageDetail, sortable columns (Library + Trending), fixed dangling `installed` pill, uncommitted |
+| **Phase 11 — Dashboard** | ✅ hero/updates/composition/donut/storage cards; brand → home; updates card → outdated library; uncommitted |
+| **Phase 11b — Services** | ✅ sidebar item ⌘5, page with start/stop/restart, per-package detail card, sidebar badge for running count, uncommitted |
+| **Phase 11c — Native macOS feel** | ✅ vibrancy + drag regions (data-tauri-drag-region + capability), traffic-light-aware sidebar, uncommitted |
+| **Phase 11d — Activity persistence** | ✅ localStorage mirror, cap 50 jobs / 500 lines, hydrate on bootstrap, uncommitted |
+| **Phase 12a — Bundled catalog + manual refresh** | pending — see decisions.md |
+| **Phase 12b — Settings shell** | pending |
+| **Phase 12c — GitHub anonymous tier** | pending |
+| **Phase 12d — Settings: network + paranoid** | pending |
+| **Phase 12e — GitHub Device Flow OAuth + Keychain** | pending |
+| **Phase 12f — GitHub authed actions** | pending |
+| **Phase 9c — "Wrong?" GitHub-issue link** | pending (waits on 12c/e) |
+| **Phase 9d — `installedAt` on Package + Last-Updated sort** | pending (needs backend field) |
+| **Phase 10 — Recipes** | pending (depends on catalog for validation) |
+
+### Phase 9b notes
+
+- New store: `src/lib/stores/discover.svelte.ts` — multi-select `selectedCategories: Set<string>`, shared by Discover + Library + PackageDetail. `selectOnly(slug)` for tile-click semantics, `toggle(slug)` for chip add/remove.
+- Discover.svelte: replaces local single-`activeCategory` with the shared store; tile click → adds single chip; chip bar above results with per-chip X + Clear button; search results filter to OR-match selected chips; chip-only browse mode (no query, chips set) lists union sorted alphabetically.
+- Fixed UX bug from the user's screenshot: `installed` pill no longer floats. Two row layouts: `.row--with-desc` (1fr 80px 2fr auto) for search; `.row--no-desc` (1fr 80px auto) for chip-filtered browse.
+- PackageDetail: new "Categories" meta row with clickable pills. Click jumps to Discover with that single category selected (closes detail panel so user lands on the filtered list, not an obscured view).
+- New component: `src/lib/components/SortableHeader.svelte` — small reusable header button with up/down arrow indicator, click toggles direction or switches column. Uses `aria-label` (not `aria-sort`, since that requires `role="columnheader"` and our list-grids aren't true tables).
+- Library: sortable Name / Version / Type / Outdated; shares the Discover category chips so the user can keep context across tabs; updated empty-state messaging to reflect chip vs. text filters separately.
+- Trending: sortable # / Name / Type / Installs. Installs defaults to descending on first click.
+- Lint/test: `npm run check` 0 errors / 1 pre-existing warning. `npm run build` clean in 1.64s. Backend untouched this pass — no Rust regression risk.
+- Status: code is in working tree, NOT committed. Awaiting user UX confirmation.
+
+### Phase 11 notes (Dashboard + Services + native feel + persistence)
+
+Single big session 2026-05-24-night. Highlights:
+
+- **Dashboard.svelte** is the new default landing. Hero row (installed / outdated / brew version), Updates panel with one-click upgrade-all (and the title is a clickable link → Library outdated filter), Composition split bar with on-request/dep/pinned meta, Top-Categories donut (180px SVG, 9-color palette, top 8 + Other, click legend → Discover with chip pre-selected), Storage card with 4 paths and Open-in-Finder per row.
+- **Donut math:** `stroke-dasharray="(pct/100)*C C"` + `stroke-dashoffset="-(startPct/100)*C"` + `rotate(-90)` for top start. Center text shows total installed.
+- **Services backend** (`commands/services.rs`): 5 commands (list, clear-cache, start, stop, restart), 5s list cache, write-lock around state mutations, alphanumeric+symbol name validation.
+- **Services frontend:** sidebar item ⌘5, sortable Name/Status/User columns, per-row action buttons (smart-disabled by current state), badge = count of running services. PackageDetail shows a Service card with pill + 3 buttons when the formula has a brew services entry.
+- **Disk usage backend** (`commands/disk_usage.rs`): `disk_usage` + `open_in_finder`, 4 paths surveyed in parallel via `tokio::join!`, 60s cache, security gate on Finder reveal (must be inside Homebrew prefix/cache).
+- **Native macOS feel:** vibrancy via `window-vibrancy = "0.6"` + `apply_vibrancy(NSVisualEffectMaterial::HudWindow, …)`; tauri.conf.json `transparent: true` + `titleBarStyle: "Overlay"` + `hiddenTitle: true`; sidebar brand padded to clear traffic lights; `data-tauri-drag-region` on brand-wrap + every panel-head with the new `core:window:allow-start-dragging` capability.
+- **Activity persistence:** localStorage mirror `brew-browser:activity:v1`, cap 50 jobs / 500 lines per job, debounced 400ms writes + immediate flush on terminal events, hydrate from +layout mount.
+- **Sortable lists hardening:** `1fr` → `minmax(0, 1fr)` everywhere a flex column had text (Discover, Library header + PackageRow, Trending). Fixed cross-row pill alignment that depended on name length. Also `auto` → `90px` for the installed column so it doesn't collapse-and-shift the kind cell.
+- **Trending Refresh fix:** the force flag now busts the backend cache before calling `trending_fetch` — was silently ignored before.
+- **Dashboard scroll + drag bug fix:** removed the fixed-position drag-overlay (was eating scroll wheel + not actually triggering drag); fixed flex children getting shrunken to fit by adding `.body > * { flex-shrink: 0 }`.
+- **Test count:** 207 → 210 (3 new for `services` name validation, 2 for `disk_usage` du_bytes, 1 for `categories` already counted last session = pre-session 204 + 6 = 210).
+
+### Phase 9a notes
+
+- Backend: `commands/categories.rs` — `categories_data` Tauri command, embeds JSON via `include_str!` (zero runtime file dep), parsed once + memoised on `AppState.categories_cache`. 1 new unit test (205 total, was 204).
+- Frontend types: `CategoryMeta`, `CategoriesData` in `types.ts`.
+- API wrapper: `categoriesData()` in `api.ts`.
+- Store: `src/lib/stores/categories.svelte.ts` — lazy-load, derived `tiles` (sorted by count, uncategorized last), `tokensInCategory(slug)` for the filtered view, `categoriesOf(name, kind)` for future chip rendering.
+- Icon resolver: `src/lib/util/categoryIcon.ts` — static map of 19 Lucide icons, falls back to `HelpCircle`.
+- Discover.svelte: new tile grid (`auto-fill, minmax(180px, 1fr)`), clicking a tile drills into a filtered list, back button returns to grid. Search still wins when there's a query.
+- Lint/test: cargo clippy `-D warnings` clean, cargo test 205 pass, `npm run check` 0 errors, `npm run build` clean.
+- Status: code is in working tree, NOT committed. Awaiting user sign-off on UX before commit.
 
 ### Test + build status (current)
 
-- `cargo test --manifest-path src-tauri/Cargo.toml`: **204 passed / 0 failed / 6 ignored**
+- `cargo test --manifest-path src-tauri/Cargo.toml`: **210 passed / 0 failed / 6 ignored** (up from 204)
 - `cargo check`: clean
 - `cargo clippy --all-targets -- -D warnings`: clean
 - `npm run build`: clean
 - `npm run check`: 0 errors (1 pre-existing tsconfig-node warning)
-- `cargo deny check`: advisories ok, bans ok, licenses ok, sources ok
-- `cargo tauri build`: produces 6.1 MB unsigned `.dmg`
+- `cargo deny check`: advisories ok, bans ok, licenses ok, sources ok (pre-session)
+- `cargo tauri build`: produces signed/notarized 5.7 MB `.dmg` (v0.1.0 already shipped)
 
 ### Security posture
 

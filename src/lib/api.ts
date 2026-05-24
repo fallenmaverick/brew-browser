@@ -23,6 +23,8 @@ import type {
   BrewfileId,
   BrewfileSummary,
   BrewStreamEvent,
+  CategoriesData,
+  DiskUsageReport,
   JobResult,
   OutdatedPackage,
   Package,
@@ -30,6 +32,7 @@ import type {
   PackageKind,
   PackageList,
   SearchResults,
+  Service,
   TrendingReport,
   TrendingWindow,
 } from "./types";
@@ -219,6 +222,75 @@ export function caskIcon(token: string): Promise<string | null> {
  */
 export function caskIconFromHomepage(token: string, homepage: string): Promise<string | null> {
   return invoke<string | null>("cask_icon_from_homepage", { token, homepage });
+}
+
+// ============================================================
+// Phase 9 — categories
+// ============================================================
+
+/**
+ * Fetch the bundled `categories.json` payload (19 categories + 15,974
+ * categorized tokens). The backend embeds the JSON at compile time via
+ * `include_str!` and memoises the parsed result, so subsequent invocations
+ * within the same process are effectively free.
+ *
+ * Frontend callers should hit this via the `categoriesStore` rather than
+ * invoking directly — the store caches across components and exposes the
+ * derived helpers used by Discover / Library / Trending.
+ */
+export function categoriesData(): Promise<CategoriesData> {
+  return invoke<CategoriesData>("categories_data");
+}
+
+// ============================================================
+// Dashboard — disk usage + Finder reveal
+// ============================================================
+
+/**
+ * Probe disk usage for the four canonical Homebrew sub-trees (Cellar,
+ * Caskroom, var/log, download cache). Backend caches the result for ~60 s
+ * to keep Dashboard renders cheap.
+ */
+export function diskUsage(): Promise<DiskUsageReport> {
+  return invoke<DiskUsageReport>("disk_usage");
+}
+
+/** Force the next `diskUsage()` call to re-run `du` instead of using cache. */
+export function diskUsageClearCache(): Promise<void> {
+  return invoke<void>("disk_usage_clear_cache");
+}
+
+/**
+ * Reveal a path in macOS Finder. Backend gates against paths outside the
+ * Homebrew prefix and cache, so the frontend can only request paths the
+ * disk-usage report itself surfaced.
+ */
+export function openInFinder(path: string): Promise<void> {
+  return invoke<void>("open_in_finder", { path });
+}
+
+// ============================================================
+// Services (brew services)
+// ============================================================
+
+export function servicesList(): Promise<Service[]> {
+  return invoke<Service[]>("services_list");
+}
+
+export function servicesClearCache(): Promise<void> {
+  return invoke<void>("services_clear_cache");
+}
+
+export function servicesStart(name: string): Promise<void> {
+  return invoke<void>("services_start", { name });
+}
+
+export function servicesStop(name: string): Promise<void> {
+  return invoke<void>("services_stop", { name });
+}
+
+export function servicesRestart(name: string): Promise<void> {
+  return invoke<void>("services_restart", { name });
 }
 
 // ============================================================

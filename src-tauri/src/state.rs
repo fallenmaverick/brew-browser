@@ -17,6 +17,9 @@ use tokio::sync::{oneshot, Mutex, RwLock};
 use uuid::Uuid;
 
 use crate::brew::paths::resolve_brew_path;
+use crate::commands::categories::CategoriesData;
+use crate::commands::disk_usage::CachedDiskUsage;
+use crate::commands::services::CachedServices;
 use crate::error::BrewError;
 use crate::trending::cache::TrendingCache;
 use crate::types::{BrewEnvironment, PackageList};
@@ -78,6 +81,21 @@ pub struct AppState {
     /// Cached package list for cross-referencing (e.g. trending
     /// "installed" flag). Invalidated after every WRITE.
     pub installed_cache: RwLock<Option<PackageList>>,
+
+    /// Parsed `categories.json` payload, memoised across calls. Filled lazily
+    /// on the first `categories_data` invocation. The JSON itself is baked
+    /// into the binary via `include_str!`, so this is purely a parse cache.
+    pub categories_cache: Arc<Mutex<Option<Arc<CategoriesData>>>>,
+
+    /// Disk-usage report cache. Filled by `disk_usage`, invalidated by
+    /// `disk_usage_clear_cache`. TTL is checked inside the command itself
+    /// (60 s) so concurrent callers don't double-spawn `du` on each other.
+    pub disk_usage_cache: Arc<Mutex<Option<CachedDiskUsage>>>,
+
+    /// `brew services list` result, memoised for ~5 s so the Services tab
+    /// renders instantly after the first probe. Invalidated automatically
+    /// by start/stop/restart so post-action lists are fresh.
+    pub services_cache: Arc<Mutex<Option<CachedServices>>>,
 }
 
 impl AppState {
@@ -117,6 +135,9 @@ impl AppState {
             cache_dir,
             app_data_dir,
             installed_cache: RwLock::new(None),
+            categories_cache: Arc::new(Mutex::new(None)),
+            disk_usage_cache: Arc::new(Mutex::new(None)),
+            services_cache: Arc::new(Mutex::new(None)),
         })
     }
 

@@ -2,10 +2,12 @@
   import { onMount } from "svelte";
 
   import Sidebar from "$lib/components/Sidebar.svelte";
+  import Dashboard from "$lib/components/Dashboard.svelte";
   import Library from "$lib/components/Library.svelte";
   import Discover from "$lib/components/Discover.svelte";
   import Trending from "$lib/components/Trending.svelte";
   import Snapshots from "$lib/components/Snapshots.svelte";
+  import Services from "$lib/components/Services.svelte";
   import ActivityHistory from "$lib/components/ActivityHistory.svelte";
   import PackageDetail from "$lib/components/PackageDetail.svelte";
   import ResizeHandle from "$lib/components/ResizeHandle.svelte";
@@ -18,6 +20,7 @@
   import { packages } from "$lib/stores/packages.svelte";
   import { brewfiles } from "$lib/stores/brewfiles.svelte";
   import { trending } from "$lib/stores/trending.svelte";
+  import { services } from "$lib/stores/services.svelte";
   import { search } from "$lib/stores/search.svelte";
   import { toast } from "$lib/stores/toast.svelte";
   import type { SidebarSection, ThemePreference } from "$lib/types";
@@ -60,10 +63,18 @@
       return;
     }
 
-    // Cmd+1..5: section nav
-    if (meta && ["1","2","3","4","5"].includes(e.key)) {
+    // Cmd+0..6: section nav (0 = dashboard / home)
+    if (meta && ["0","1","2","3","4","5","6"].includes(e.key)) {
       e.preventDefault();
-      const map: Record<string, SidebarSection> = { "1": "library", "2": "discover", "3": "trending", "4": "snapshots", "5": "activity" };
+      const map: Record<string, SidebarSection> = {
+        "0": "dashboard",
+        "1": "library",
+        "2": "discover",
+        "3": "trending",
+        "4": "snapshots",
+        "5": "services",
+        "6": "activity",
+      };
       ui.setSection(map[e.key]);
       return;
     }
@@ -72,10 +83,12 @@
     if (meta && e.key.toLowerCase() === "r") {
       e.preventDefault();
       switch (ui.section) {
-        case "library":  packages.load(true); break;
-        case "trending": trending.load(true); break;
+        case "dashboard": packages.load(true); break;
+        case "library":   packages.load(true); break;
+        case "trending":  trending.load(true); break;
         case "snapshots": brewfiles.load(); break;
-        case "discover": if (search.query) search.run(search.query); break;
+        case "services":  services.load(true); break;
+        case "discover":  if (search.query) search.run(search.query); break;
       }
       return;
     }
@@ -124,7 +137,9 @@
     <main class="content">
       {#key ui.section}
         <div class="section-pane">
-          {#if ui.section === "library"}
+          {#if ui.section === "dashboard"}
+            <Dashboard />
+          {:else if ui.section === "library"}
             <Library />
           {:else if ui.section === "discover"}
             <Discover />
@@ -132,6 +147,8 @@
             <Trending />
           {:else if ui.section === "snapshots"}
             <Snapshots />
+          {:else if ui.section === "services"}
+            <Services />
           {:else if ui.section === "activity"}
             <ActivityHistory />
           {/if}

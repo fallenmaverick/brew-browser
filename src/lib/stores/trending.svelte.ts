@@ -2,7 +2,7 @@
  * Trending store — fetches top-N trending packages per window with cache TTL display.
  */
 
-import { trendingFetch } from "$lib/api";
+import { trendingClearCache, trendingFetch } from "$lib/api";
 import { isBrewError, type TrendingReport, type TrendingWindow } from "$lib/types";
 
 class TrendingStore {
@@ -18,7 +18,16 @@ class TrendingStore {
     this.loading = true;
     this.error = null;
     try {
-      // backend handles 1-hour cache; we always call & trust the returned cacheAgeSeconds
+      // The backend has a 1-hour cache. The Refresh button's whole purpose is to
+      // bust it, so when `force` is set we clear the cache first; otherwise a
+      // refresh would just return the same report with a stale cacheAgeSeconds.
+      if (force) {
+        try {
+          await trendingClearCache();
+        } catch {
+          // Cache-clear failures shouldn't block the fetch — best-effort only.
+        }
+      }
       this.report = await trendingFetch(this.window);
       this.fetchedAtMs = Date.now();
     } catch (e) {

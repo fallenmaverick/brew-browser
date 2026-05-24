@@ -61,3 +61,33 @@ Implementation: GitHub OAuth Device Flow (no client secret, designed for desktop
 - A "BrewBucks" tier — there is no tier
 - Built-in payments for paid casks (not how brew works)
 - Custom URL-scheme handlers (brew-browser://...) — surface area, no clear win
+
+## Resolved this session (2026-05-24-night)
+
+- ✅ **Category-aware UI everywhere** — chip filters live on Discover + Library; PackageDetail shows category pills
+- ✅ **Dashboard** — landed as Phase 11 with donut chart for top categories in your library
+- ✅ **Tier A NSVisualEffectView (vibrancy)** — shipped this session
+- ✅ **Services view** — Phase 11b, with per-package start/stop/restart
+- ✅ **Storage card** — disk-usage view of Cellar / Caskroom / var/log / cache with Open-in-Finder
+
+## Phase 12 — Catalog + Settings + GitHub (planned)
+
+See `decisions.md` (2026-05-24-night entries) for the design decisions. The detailed task graph lives in `memory-bank/phase12-plan.md`.
+
+Phase 12 grew out of two user prompts:
+1. "What can we do with the formulae.brew.sh API?" — the catalog opens up deprecation warnings, build-error rates, reverse deps, dep-tree visualization, Brewfile validation, "what's new this week"
+2. "What should live in Settings? GitHub auth for stars/follow/issues, etc." — Settings shell becomes the home for catalog refresh, paranoid mode, GitHub auth, theme overrides
+
+## Still open
+
+- Recipes (Phase 10) — paused; depends on catalog for validation
+- Real screenshots per `visualStory.md`
+- Categorize cron on Beast or umbp for daily delta
+- "Wrong?" GitHub-issue link in PackageDetail (waits on Phase 12c/e)
+- `installedAt` on Package + Last-Updated sort (small backend change)
+- Tier B Tahoe Liquid Glass via Swift bridge (v0.2)
+- App icon thumbnails inside category tiles
+- "Recommended for you" tile based on installed mix (LLM at build time)
+- Search within a single category
+- Multi-select category intersection ("AI ∩ Developer Tools")
+- Per-cask "Similar to" suggestions

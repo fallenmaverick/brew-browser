@@ -41,6 +41,12 @@ base64 = "0.22"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
+# Native macOS window vibrancy (NSVisualEffectView) — gives the sidebar that
+# "frosted glass" look the rest of macOS uses. Cross-platform crate; we only
+# call its macOS APIs.
+[target.'cfg(target_os = "macos")'.dependencies]
+window-vibrancy = "0.6"
+
 [dev-dependencies]
 # Reserved for future integration tests that need a sandbox dir
 # (e.g. brewfile_export / brewfile_import) — currently unused by the

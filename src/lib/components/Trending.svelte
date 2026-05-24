@@ -7,16 +7,49 @@
   import Pill from "./Pill.svelte";
   import LoadingState from "./LoadingState.svelte";
   import EmptyState from "./EmptyState.svelte";
+  import SortableHeader from "./SortableHeader.svelte";
   import { trending } from "$lib/stores/trending.svelte";
   import { ui } from "$lib/stores/ui.svelte";
   import { packages } from "$lib/stores/packages.svelte";
-  import type { TrendingWindow } from "$lib/types";
+  import type { TrendingEntry, TrendingWindow } from "$lib/types";
 
   onMount(() => {
     if (!trending.report) trending.load();
   });
 
   const windows: TrendingWindow[] = ["30d", "90d", "365d"];
+
+  type SortKey = "rank" | "name" | "kind" | "installs";
+  let sortKey: SortKey = $state("rank");
+  let sortDir: "asc" | "desc" = $state("asc");
+
+  function changeSort(key: string) {
+    const k = key as SortKey;
+    if (sortKey === k) {
+      sortDir = sortDir === "asc" ? "desc" : "asc";
+    } else {
+      sortKey = k;
+      // Numeric/rank-like keys default to descending on first click (most-installed first)
+      sortDir = k === "installs" ? "desc" : "asc";
+    }
+  }
+
+  let sortedEntries = $derived.by<TrendingEntry[]>(() => {
+    if (!trending.report) return [];
+    const arr = [...trending.report.entries];
+    const mul = sortDir === "asc" ? 1 : -1;
+    arr.sort((a, b) => {
+      let cmp = 0;
+      switch (sortKey) {
+        case "rank":     cmp = a.rank - b.rank; break;
+        case "name":     cmp = a.name.localeCompare(b.name); break;
+        case "kind":     cmp = a.kind.localeCompare(b.kind); break;
+        case "installs": cmp = a.installCount - b.installCount; break;
+      }
+      return cmp * mul;
+    });
+    return arr;
+  });
 
   let agoLabel = $derived.by(() => {
     if (!trending.report) return "";
@@ -34,9 +67,9 @@
 </script>
 
 <section class="trending">
-  <header class="panel-head">
+  <header class="panel-head" data-tauri-drag-region>
     <h1>Trending</h1>
-    <div class="head-right">
+    <div class="head-right" data-tauri-drag-region="false">
       <div class="pillgroup" role="tablist" aria-label="Time window">
         {#each windows as w (w)}
           <button class:on={trending.window === w} onclick={() => trending.setWindow(w)} role="tab" aria-selected={trending.window === w}>{w}</button>
@@ -63,11 +96,15 @@
         {#snippet icon()}<TrendingUp size={48} />{/snippet}
       </EmptyState>
     {:else if trending.report}
-      <div class="list-header" aria-hidden="true">
-        <span>#</span><span>Name</span><span>Type</span><span>Installs</span><span></span>
+      <div class="list-header" role="row">
+        <SortableHeader label="#" sortKey="rank" active={sortKey === "rank"} dir={sortDir} onSort={changeSort} />
+        <SortableHeader label="Name" sortKey="name" active={sortKey === "name"} dir={sortDir} onSort={changeSort} />
+        <SortableHeader label="Type" sortKey="kind" active={sortKey === "kind"} dir={sortDir} onSort={changeSort} />
+        <SortableHeader label="Installs" sortKey="installs" active={sortKey === "installs"} dir={sortDir} onSort={changeSort} align="right" />
+        <span></span>
       </div>
       <ul class="list" aria-label="Trending packages">
-        {#each trending.report.entries as e (e.name + e.kind)}
+        {#each sortedEntries as e (e.name + e.kind)}
           {@const installed = e.installedLocally || packages.isInstalled(e.name, e.kind)}
           <li>
             <button class="row" onclick={() => openEntry(e.name, e.kind)}>
@@ -121,23 +158,19 @@
   .list-wrap { flex: 1; overflow-y: auto; min-height: 0; }
   .list-header {
     display: grid;
-    grid-template-columns: 48px 1fr 80px 120px 100px;
+    grid-template-columns: 48px minmax(0, 1fr) 80px 120px 100px;
     gap: var(--space-3);
     padding: var(--space-2) var(--space-3);
     background: var(--color-surface);
     border-bottom: 1px solid var(--color-border);
-    color: var(--color-text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    font-size: var(--text-caption);
-    font-weight: var(--fw-semibold);
     position: sticky;
     top: 0;
+    z-index: 1;
   }
   .list { display: flex; flex-direction: column; }
   .row {
     display: grid;
-    grid-template-columns: 48px 1fr 80px 120px 100px;
+    grid-template-columns: 48px minmax(0, 1fr) 80px 120px 100px;
     align-items: center;
     gap: var(--space-3);
     width: 100%;

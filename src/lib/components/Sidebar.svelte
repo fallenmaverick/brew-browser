@@ -4,6 +4,7 @@
   import TrendingUp from "@lucide/svelte/icons/trending-up";
   import Archive from "@lucide/svelte/icons/archive";
   import Activity from "@lucide/svelte/icons/activity";
+  import Server from "@lucide/svelte/icons/server";
   import Sun from "@lucide/svelte/icons/sun";
   import Moon from "@lucide/svelte/icons/moon";
   import Monitor from "@lucide/svelte/icons/monitor";
@@ -12,7 +13,9 @@
   import { packages } from "$lib/stores/packages.svelte";
   import { activity } from "$lib/stores/activity.svelte";
   import { brewfiles } from "$lib/stores/brewfiles.svelte";
+  import { services } from "$lib/stores/services.svelte";
   import { env } from "$lib/stores/env.svelte";
+  import { normalizeServiceStatus } from "$lib/types";
   import type { SidebarSection, ThemePreference } from "$lib/types";
 
   interface NavItem {
@@ -27,7 +30,8 @@
     { id: "discover",  label: "Discover",  shortcut: "⌘2", icon: Compass },
     { id: "trending",  label: "Trending",  shortcut: "⌘3", icon: TrendingUp },
     { id: "snapshots", label: "Snapshots", shortcut: "⌘4", icon: Archive },
-    { id: "activity",  label: "Activity",  shortcut: "⌘5", icon: Activity },
+    { id: "services",  label: "Services",  shortcut: "⌘5", icon: Server },
+    { id: "activity",  label: "Activity",  shortcut: "⌘6", icon: Activity },
   ];
 
   function badge(id: SidebarSection): string | null {
@@ -38,6 +42,10 @@
     if (id === "snapshots") {
       const n = brewfiles.list.length;
       return n > 0 ? String(n) : null;
+    }
+    if (id === "services") {
+      const r = services.list.filter((s) => normalizeServiceStatus(s.status) === "started").length;
+      return r > 0 ? String(r) : null;
     }
     if (id === "activity") {
       const r = activity.runningCount;
@@ -77,9 +85,24 @@
 </script>
 
 <aside class="sidebar" aria-label="Primary navigation">
-  <header class="brand">
-    <span class="brand-mark" aria-hidden="true">🍺</span>
-    <span class="brand-name">brew-browser</span>
+  <!--
+    The brand wrapper is the sidebar's window-drag handle. Tauri's drag-region
+    handler uses click-vs-drag detection, so the .brand button inside still
+    fires its onclick (with an explicit opt-out for belt+suspenders).
+  -->
+  <header class="brand-wrap" data-tauri-drag-region>
+    <button
+      type="button"
+      class="brand"
+      class:active={ui.section === "dashboard"}
+      aria-current={ui.section === "dashboard" ? "page" : undefined}
+      onclick={() => ui.setSection("dashboard")}
+      title="Dashboard (⌘0)"
+      data-tauri-drag-region="false"
+    >
+      <span class="brand-mark" aria-hidden="true">🍺</span>
+      <span class="brand-name">brew-browser</span>
+    </button>
   </header>
 
   <nav>
@@ -137,17 +160,34 @@
     flex-direction: column;
     min-height: 0;
   }
+  .brand-wrap {
+    border-bottom: 1px solid var(--color-border);
+    /* Top padding clears the traffic-light cluster; the .brand button sits
+       below the traffic lights at its natural sidebar width. Window dragging
+       is handled by the separate .titlebar-drag-region overlay (+layout.svelte). */
+    padding: 44px var(--space-2) var(--space-2) var(--space-2);
+  }
   .brand {
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    padding: var(--space-4);
+    width: 100%;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
     font-weight: var(--fw-semibold);
     font-size: var(--text-body);
     color: var(--color-text-primary);
-    border-bottom: 1px solid var(--color-border);
+    text-align: left;
+    cursor: pointer;
+    transition: background-color var(--motion-duration-fast) var(--motion-ease-out);
+  }
+  .brand:hover { background: var(--color-surface-sunken); }
+  .brand.active {
+    background: var(--color-surface-sunken);
+    color: var(--color-text-primary);
   }
   .brand-mark { font-size: 16px; }
+  .brand-name { white-space: nowrap; }
 
   nav { flex: 1; padding: var(--space-2); overflow-y: auto; }
   ul { display: flex; flex-direction: column; gap: 1px; }

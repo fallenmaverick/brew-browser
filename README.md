@@ -33,9 +33,11 @@ A global Cmd+K command palette covers the verbs. Cmd+1…5 jumps between section
 
 ## Install (end users)
 
-A signed `.dmg` is not published yet. Until it is, the path is **Build from source** below.
+Download the latest signed + notarized `.dmg` from the [releases page](https://github.com/msitarzewski/brew-browser/releases/latest), open it, and drag **brew-browser** to your Applications folder. No Gatekeeper warning — the build is signed with a Developer ID Application certificate and notarized by Apple.
 
-Coming soon: `brew tap msitarzewski/brew-browser` for one-line install once a release is cut.
+Apple Silicon only for now. macOS 13 (Ventura) or newer.
+
+A `brew tap` for one-line install is on the roadmap.
 
 ## Build from source
 

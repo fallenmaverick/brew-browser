@@ -135,9 +135,9 @@
 </script>
 
 <section class="snapshots">
-  <header class="panel-head">
+  <header class="panel-head" data-tauri-drag-region>
     <h1>Snapshots</h1>
-    <div class="head-right">
+    <div class="head-right" data-tauri-drag-region="false">
       <Button size="md" variant="secondary" onclick={doImport}>
         {#snippet icon()}<Upload size={14} />{/snippet}
         Import…

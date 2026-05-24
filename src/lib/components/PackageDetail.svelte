@@ -13,13 +13,24 @@
   import Button from "./Button.svelte";
   import DestructiveConfirm from "./DestructiveConfirm.svelte";
   import LoadingState from "./LoadingState.svelte";
+  import Play from "@lucide/svelte/icons/play";
+  import Square from "@lucide/svelte/icons/square";
+  import RotateCcw from "@lucide/svelte/icons/rotate-ccw";
+
   import { ui } from "$lib/stores/ui.svelte";
   import { packages } from "$lib/stores/packages.svelte";
   import { activity } from "$lib/stores/activity.svelte";
   import { toast } from "$lib/stores/toast.svelte";
+  import { categories } from "$lib/stores/categories.svelte";
+  import { discover } from "$lib/stores/discover.svelte";
+  import { services } from "$lib/stores/services.svelte";
   import { brewInfo, brewInstall, brewUninstall, brewUpgrade } from "$lib/api";
   import { safeOpenUrl } from "$lib/util/url";
-  import { isBrewError, type IconSource, type PackageDetail } from "$lib/types";
+  import { resolveCategoryIcon } from "$lib/util/categoryIcon";
+  import { isBrewError, normalizeServiceStatus, type IconSource, type PackageDetail } from "$lib/types";
+
+  // Categories file is small; ensure it's loaded so the pills can render. Idempotent.
+  categories.ensureLoaded();
 
   // Small transparency label for the meta row — keeps "where did this come from?"
   // visible without painting a whole section. Skips into a tooltip for the
@@ -184,6 +195,39 @@
   let pkg = $derived<PackageDetail["package"] | undefined>(detail?.package);
   let isInstalled = $derived(!!pkg?.installedVersion);
   let isOutdated = $derived(!!pkg?.outdated);
+
+  /** Categories assigned to this package (from `categories.json`). */
+  let pkgCategories = $derived.by<string[]>(() => {
+    if (!pkg) return [];
+    return categories.categoriesOf(pkg.name, pkg.kind);
+  });
+
+  /**
+   * Jump to Discover with a category chip pre-selected. Closes the detail panel
+   * so the user lands on the filtered view, not an obscured one.
+   */
+  function jumpToCategory(slug: string) {
+    discover.selectOnly(slug);
+    ui.closeDetail();
+    ui.setSection("discover");
+  }
+
+  /** Brew service entry for this package, if it has one. Formulae only. */
+  let svc = $derived.by(() =>
+    pkg && pkg.kind === "formula" ? services.byName(pkg.name) : undefined,
+  );
+  let svcStatus = $derived(svc ? normalizeServiceStatus(svc.status) : null);
+  let svcPending = $derived(pkg ? services.isPending(pkg.name) : false);
+
+  async function svcAct(action: "start" | "stop" | "restart") {
+    if (!pkg) return;
+    try {
+      await services.act(pkg.name, action);
+      toast.success(`${action.charAt(0).toUpperCase() + action.slice(1)}ed ${pkg.name}`);
+    } catch (e) {
+      toast.error(`Failed to ${action} ${pkg.name}`, isBrewError(e) ? e.code : String(e));
+    }
+  }
 </script>
 
 {#if ui.selectedPackage}
@@ -235,6 +279,27 @@
             <dt>Icon source</dt>
             <dd class="icon-source" title={iconSourceTitle(pkg.iconSource)}>{iconSourceLabel(pkg.iconSource)}</dd>
           </div>
+          {#if pkgCategories.length > 0}
+            <div>
+              <dt>Categories</dt>
+              <dd class="cat-pills">
+                {#each pkgCategories as slug (slug)}
+                  {@const Icon = resolveCategoryIcon(
+                    categories.data?.categories[slug]?.icon ?? "HelpCircle",
+                  )}
+                  <button
+                    type="button"
+                    class="cat-pill"
+                    onclick={() => jumpToCategory(slug)}
+                    title={`Browse all packages in ${categories.labelOf(slug)}`}
+                  >
+                    <Icon size={12} />
+                    <span>{categories.labelOf(slug)}</span>
+                  </button>
+                {/each}
+              </dd>
+            </div>
+          {/if}
         </dl>
 
         {#if pkg.description}
@@ -246,6 +311,46 @@
             <span class="truncate">{pkg.homepage}</span>
             <ExternalLink size={12} />
           </button>
+        {/if}
+
+        {#if svc}
+          <section class="service-card" class:pending={svcPending}>
+            <div class="svc-head">
+              <h3>Service</h3>
+              <Pill tone={svcStatus === "started" ? "success" : svcStatus === "error" ? "danger" : svcStatus === "scheduled" ? "warning" : "neutral"}>
+                {svcStatus === "started" ? "running" : svcStatus === "none" ? "not loaded" : svcStatus ?? "unknown"}
+              </Pill>
+            </div>
+            {#if svc.user}
+              <div class="svc-meta text-muted">user: {svc.user}</div>
+            {/if}
+            <div class="svc-actions">
+              <button
+                class="svc-btn"
+                onclick={() => svcAct("start")}
+                disabled={svcPending || svcStatus === "started"}
+                title={svcStatus === "started" ? "Already running" : "Start service"}
+              >
+                <Play size={14} /> Start
+              </button>
+              <button
+                class="svc-btn"
+                onclick={() => svcAct("stop")}
+                disabled={svcPending || svcStatus === "stopped" || svcStatus === "none"}
+                title={svcStatus === "started" ? "Stop service" : "Not running"}
+              >
+                <Square size={14} /> Stop
+              </button>
+              <button
+                class="svc-btn"
+                onclick={() => svcAct("restart")}
+                disabled={svcPending}
+                title="Restart service"
+              >
+                <RotateCcw size={14} /> Restart
+              </button>
+            </div>
+          </section>
         {/if}
 
         {#if detail.caveats}
@@ -387,6 +492,38 @@
   .warn { color: var(--color-warning-strong); margin-left: var(--space-2); font-weight: var(--fw-medium); } /* AA text contrast */
   .icon-source { color: var(--color-text-secondary); }
 
+  /* Category pills sit in the dd column; let them wrap if there are many. */
+  .cat-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .cat-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px var(--space-2);
+    height: 20px;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface-sunken);
+    color: var(--color-text-secondary);
+    font-size: var(--text-caption);
+    font-weight: var(--fw-medium);
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  }
+  .cat-pill:hover {
+    background: var(--color-brand-subtle);
+    border-color: var(--color-brand);
+    color: var(--color-text-primary);
+  }
+  .cat-pill:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
   .desc {
     color: var(--color-text-secondary);
     line-height: var(--lh-normal);
@@ -413,6 +550,55 @@
     word-break: break-word;
     white-space: normal;
   }
+
+  /* ── Service card (per-package brew services controls) ── */
+  .service-card {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-sunken);
+    padding: var(--space-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    transition: opacity 0.12s ease;
+  }
+  .service-card.pending { opacity: 0.6; }
+  .svc-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+  .svc-head h3 {
+    font-size: var(--text-h3);
+    font-weight: var(--fw-semibold);
+    margin: 0;
+  }
+  .svc-meta { font-size: var(--text-body-sm); }
+  .svc-actions {
+    display: flex;
+    gap: var(--space-2);
+  }
+  .svc-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px var(--space-2);
+    height: 28px;
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+    font-size: var(--text-body-sm);
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  }
+  .svc-btn:not(:disabled):hover {
+    background: var(--color-surface-raised);
+    color: var(--color-text-primary);
+    border-color: var(--color-accent);
+  }
+  .svc-btn:disabled { opacity: 0.4; cursor: default; }
 
   .caveats {
     background: var(--color-warning-subtle);

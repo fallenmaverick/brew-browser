@@ -25,7 +25,7 @@
 </script>
 
 <section class="hist">
-  <header class="panel-head">
+  <header class="panel-head" data-tauri-drag-region>
     <h1>Activity</h1>
     {#if activity.jobs.length > 0}
       <Button size="sm" variant="ghost" onclick={() => activity.clearCompleted()}>
