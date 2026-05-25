@@ -36,13 +36,17 @@ use commands::*;
 // thing standing between a compromised brew-browser.zerologic.com
 // and a malicious binary push.
 //
-// The placeholder shape (`RWQ…`) is what a real minisign pubkey
-// looks like (base64-encoded ed25519 public key, ~56 bytes) so the
-// updater plugin doesn't reject the string on parse. The signature
-// verification at install time will fail closed on every artifact
-// until this is replaced with the real key — the safer failure mode
-// than shipping with a "skip verification" placeholder.
-const UPDATER_PUBKEY: &str = "RWQAAAAAPLACEHOLDER_REPLACE_BEFORE_RELEASE_SEE_BUILD_MDxxxxxxxxxx";
+// Real minisign public key, set 2026-05-25 for v0.3.0. The matching
+// private key lives at `~/.config/brew-browser/updater.key` (chmod 600,
+// outside the repo). The signature verification at install time
+// validates every downloaded `.app.tar.gz` against this pubkey; any
+// mismatch aborts the install with no on-disk side effects.
+//
+// `tauri.conf.json` carries the same value for the plugin to consume
+// at startup; keep both in sync. The plugin parses Tauri's base64-of-
+// minisign-blob format directly — what you see here is exactly what
+// `tauri signer generate -w …` printed.
+const UPDATER_PUBKEY: &str = "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDczMzVERDBGRDAzQTRBNkEKUldScVNqclFEOTAxYy9DYTg5QThJR2JWWHJZSWdWMXRkckFlUDAyVHpxcjgwWXVHaUQ2VlNGcHgK";
 
 pub fn updater_pubkey() -> &'static str {
     UPDATER_PUBKEY

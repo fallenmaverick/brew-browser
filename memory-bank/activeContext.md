@@ -1,7 +1,7 @@
 # Active Context
 
-**Date:** 2026-05-25 (v0.3.0 prep, post-compact follow-up session)
-**State:** Phase 15 fix-up complete + GitHub package resolution expanded beyond homepage (task #17). v0.3.0 is blocker-clean. Remaining v0.3.0 work is release plumbing (minisign keypair, version bump, build, ship).
+**Date:** 2026-05-25 (v0.3.0 released)
+**State:** v0.3.0 signed + notarized + stapled. GH release published. Manifest live on `brew-browser.zerologic.com/updater.json`. Issue #1 closed. Auto-updater path validated end-to-end with a real minisign keypair.
 
 ## Repo
 

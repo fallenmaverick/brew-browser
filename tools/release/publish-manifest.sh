@@ -13,9 +13,13 @@
 #      The .dmg is still uploaded to GitHub Releases for fresh installs;
 #      only the auto-updater path needs the .app.tar.gz.
 #   3. Computes the artifact's SHA-256 digest.
-#   4. Signs the .app.tar.gz with `minisign` using the private key at
-#      ~/.config/brew-browser/updater.key (the user generates this
-#      key once per the BUILD.md instructions; this script does not).
+#   4. Reads the .sig file the Tauri build already produced beside the
+#      artifact (the bundler runs minisign-via-TAURI_SIGNING_* during
+#      `npm run tauri build` — see `tools/build/sign-and-notarize.sh`).
+#      We do NOT re-sign here: doing so would produce a minisign-native
+#      .minisig that the Tauri plugin's verification path doesn't accept.
+#      The Tauri-format .sig is what the embedded pubkey was generated
+#      to verify against.
 #   5. Emits dist/updater.json with the shape the Tauri updater
 #      plugin expects:
 #        {
@@ -24,7 +28,7 @@
 #          "pub_date": "2026-05-24T00:00:00Z",
 #          "platforms": {
 #            "darwin-aarch64": {
-#              "signature": "<minisign output>",
+#              "signature": "<contents of .app.tar.gz.sig, single-line>",
 #              "url": "<github release asset URL of the .app.tar.gz>",
 #              "sha256": "<artifact digest>"
 #            }
@@ -37,6 +41,7 @@
 #
 # What it does NOT do:
 #   - Generate the minisign keypair (one-time setup, see BUILD.md).
+#   - Re-sign the artifact (Tauri's bundler already did via TAURI_SIGNING_*).
 #   - Publish to the CDN (the rsync is the user's call).
 #   - Build the artifact (npm run tauri build is upstream of this).
 #   - Update CHANGELOG.md or push the git tag.
@@ -46,9 +51,8 @@
 # Exit codes:
 #   0  — manifest written successfully
 #   1  — usage error
-#   2  — artifact missing
-#   3  — minisign / sha256 tooling missing
-#   4  — signing failed
+#   2  — artifact or .sig missing
+#   3  — sha256 tooling missing
 
 set -euo pipefail
 
@@ -77,15 +81,14 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-# The Tauri bundler emits the updater artifact at this path. The
-# filename is fixed (no version stamp) inside `bundle/macos/`; we
-# upload it to GitHub Releases under a versioned name so the manifest
+# The Tauri bundler emits the updater artifact + signature at these
+# paths. Filenames are fixed (no version stamp) inside `bundle/macos/`;
+# we upload to GitHub Releases under versioned names so the manifest
 # URL is unambiguous.
 ARTIFACT_PATH="$REPO_ROOT/src-tauri/target/release/bundle/macos/brew-browser.app.tar.gz"
+SIGNATURE_FILE="${ARTIFACT_PATH}.sig"
 # Versioned name used in the published GitHub Release asset URL.
-# The user uploads `$ARTIFACT_PATH` to the release under this name.
 ARTIFACT_RELEASE_NAME="brew-browser_${VERSION}_aarch64.app.tar.gz"
-KEY_PATH="$HOME/.config/brew-browser/updater.key"
 DIST_DIR="$REPO_ROOT/dist"
 MANIFEST_PATH="$DIST_DIR/updater.json"
 
@@ -98,22 +101,17 @@ if [[ ! -f "$ARTIFACT_PATH" ]]; then
     exit 2
 fi
 
-if ! command -v minisign >/dev/null 2>&1; then
-    echo "error: minisign not on PATH" >&2
-    echo "  install via: brew install minisign" >&2
-    exit 3
+if [[ ! -f "$SIGNATURE_FILE" ]]; then
+    echo "error: updater signature not found at $SIGNATURE_FILE" >&2
+    echo "  The Tauri bundler produces this when TAURI_SIGNING_PRIVATE_KEY[_PATH]" >&2
+    echo "  + TAURI_SIGNING_PRIVATE_KEY_PASSWORD are set during 'npm run tauri build'." >&2
+    echo "  Source ~/.config/brew-browser/signing.env, then re-run the build." >&2
+    exit 2
 fi
 
 if ! command -v shasum >/dev/null 2>&1; then
     echo "error: shasum not on PATH" >&2
     echo "  on macOS this is built-in; on Linux: apt install perl" >&2
-    exit 3
-fi
-
-if [[ ! -f "$KEY_PATH" ]]; then
-    echo "error: minisign private key not found at $KEY_PATH" >&2
-    echo "  generate it once per BUILD.md instructions:" >&2
-    echo "    tauri signer generate -w $KEY_PATH" >&2
     exit 3
 fi
 
@@ -123,41 +121,19 @@ echo "info: computing SHA-256 of $(basename "$ARTIFACT_PATH")..." >&2
 SHA256=$(shasum -a 256 "$ARTIFACT_PATH" | awk '{print $1}')
 echo "info: sha256 = $SHA256" >&2
 
-# ---------- Sign ----------
+# ---------- Read signature ----------
 
-# minisign -S writes <input>.minisig next to the input file. We capture
-# the signature output, then read the .minisig file back into the
-# manifest JSON. The trusted comment is a freeform field we set to the
-# version + build date for audit traceability.
-SIGNATURE_FILE="${ARTIFACT_PATH}.minisig"
-TRUSTED_COMMENT="brew-browser ${VERSION} ($(date -u +%Y-%m-%dT%H:%M:%SZ))"
-
-# Remove any stale .minisig so a repeat run doesn't merge two signatures.
-rm -f "$SIGNATURE_FILE"
-
-echo "info: signing $(basename "$ARTIFACT_PATH") with minisign..." >&2
-if ! minisign -Sm "$ARTIFACT_PATH" -s "$KEY_PATH" -t "$TRUSTED_COMMENT" >/dev/null; then
-    echo "error: minisign signing failed" >&2
-    exit 4
-fi
-
-if [[ ! -f "$SIGNATURE_FILE" ]]; then
-    echo "error: minisign reported success but $SIGNATURE_FILE is missing" >&2
-    exit 4
-fi
-
-# Read signature as a single-line string for the JSON payload. The
-# Tauri updater plugin expects the full .minisig file contents
-# (untrusted + trusted comments + signature lines) as the "signature"
-# field — it parses them itself.
+# Tauri's bundler emits a single-line base64 blob in the .sig file
+# (Tauri's format, NOT raw minisign's multi-line .minisig format).
+# The plugin's verification path reads this string directly and parses
+# it against the embedded pubkey; do not re-encode.
 SIGNATURE_RAW=$(cat "$SIGNATURE_FILE")
-
-# JSON-escape the signature: convert literal newlines to \n. Use perl
-# (always available on macOS) for portable in-place escaping; jq is the
-# obvious alternative but adding a hard dep on jq for one string-escape
-# step felt heavy.
-SIGNATURE_JSON=$(perl -pe 's/\n/\\n/g' <<< "$SIGNATURE_RAW")
-# The above leaves a trailing \n from the heredoc; strip it.
+# Trim trailing newline if present (shasum + cat both append one).
+SIGNATURE_JSON="${SIGNATURE_RAW%$'\n'}"
+# Defensive: JSON-escape any literal newlines (Tauri's .sig is normally
+# a single line but be belt-and-braces in case bundler version drift
+# changes the shape).
+SIGNATURE_JSON=$(perl -pe 's/\n/\\n/g' <<< "$SIGNATURE_JSON")
 SIGNATURE_JSON="${SIGNATURE_JSON%\\n}"
 
 # ---------- Emit manifest ----------
@@ -194,9 +170,13 @@ echo "  url:        $URL"
 echo "  pub_date:   $PUB_DATE"
 echo "  signature:  $(wc -c < "$SIGNATURE_FILE" | tr -d ' ') bytes from $SIGNATURE_FILE"
 echo ""
-echo "next step (run manually):"
-echo "  rsync -av $MANIFEST_PATH umacbookpro:Sites/brew-browser/updater.json"
+echo "next steps (run manually):"
+echo "  1. rsync -av $MANIFEST_PATH umacbookpro:Sites/brew-browser/updater.json"
+echo "  2. gh release create v${VERSION} \\"
+echo "       src-tauri/target/release/bundle/dmg/brew-browser_${VERSION}_aarch64.dmg \\"
+echo "       $ARTIFACT_PATH#${ARTIFACT_RELEASE_NAME} \\"
+echo "       --notes-file <release-notes.md>"
 echo ""
 echo "verify before publishing:"
 echo "  shasum -a 256 $ARTIFACT_PATH"
-echo "  minisign -Vm $ARTIFACT_PATH -P \"\$(cat ~/.config/brew-browser/updater.pub)\""
+echo "  curl -s https://brew-browser.zerologic.com/updater.json | jq"
