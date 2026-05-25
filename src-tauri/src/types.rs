@@ -105,6 +105,24 @@ pub struct Package {
     /// [`IconSource`] for the variants. Only meaningful for casks;
     /// formulae always emit `IconSource::None`.
     pub icon_source: IconSource,
+    /// Canonical `https://github.com/<owner>/<repo>` URL when any of
+    /// the package's GitHub-resolvable URL fields parses cleanly via
+    /// `github::extract_github_repo`. None when no candidate URL maps
+    /// to a GitHub repo.
+    ///
+    /// **Why distinct from `homepage`:** the upstream `homepage` is
+    /// often a marketing/docs site (e.g. nodejs.org, postgresql.org)
+    /// even when the package's source / binary lives on GitHub. This
+    /// field walks `homepage` → `urls.stable.url` → `urls.head.url`
+    /// (formula) or `homepage` → `url` (cask) so the UI's GitHub
+    /// features (star/watch/file-issue/stats) light up for packages
+    /// whose `homepage` alone wouldn't have qualified.
+    ///
+    /// Output is always canonicalized to the strict-parseable form
+    /// (`https://github.com/<o>/<r>`, no `.git`, no trailing slash, no
+    /// query/fragment) so downstream `parse_github_url` accepts it
+    /// without re-validation drift.
+    pub github_homepage: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -421,6 +439,7 @@ mod tests {
             installed_on_request: true,
             installed_as_dependency: false,
             icon_source: IconSource::None,
+            github_homepage: None,
         };
         let v = serde_json::to_value(&pkg).unwrap();
         for k in [
@@ -438,6 +457,7 @@ mod tests {
             "installedOnRequest",
             "installedAsDependency",
             "iconSource",
+            "githubHomepage",
         ] {
             assert!(v.get(k).is_some(), "Package must have wire field {:?}", k);
         }
@@ -449,6 +469,7 @@ mod tests {
             "installed_on_request",
             "installed_as_dependency",
             "icon_source",
+            "github_homepage",
         ] {
             assert!(v.get(snake).is_none(), "snake key {:?} must not be present", snake);
         }

@@ -324,33 +324,30 @@
   // We gate three things before triggering a fetch:
   //   1. `settings.effective.githubEnabled` — user opt-in toggle.
   //   2. `!settings.effective.paranoidMode` — master kill switch.
-  //   3. `pkg.homepage` looks like a github.com URL (cheap pre-check
-  //      so we don't even paint the card for non-GitHub homepages).
+  //   3. `pkg.githubHomepage !== null` — the backend pre-resolved a
+  //      canonical github.com/<o>/<r> URL by walking homepage →
+  //      urls.stable.url → urls.head.url (formula) or homepage → url
+  //      (cask). Lights up the card for packages whose homepage alone
+  //      wouldn't have qualified.
   //
   // The backend re-validates the URL strictly via `parse_github_url`,
-  // so the frontend check is just a UI optimisation; if it false-
-  // positives the backend will still return `null` (collapses to "miss").
-  //
-  // The store handles the actual fetch + caching; we just read the
-  // outcome out of `github.repoStatsCache` and re-render.
+  // so this resolved field is already canonical; no extra regex needed.
 
-  /** Cheap regex check: looks like https?://github.com/<owner>/<repo>. */
-  function looksLikeGithubHomepage(url: string | null | undefined): boolean {
-    if (!url) return false;
-    return /^https?:\/\/github\.com\/[^/]+\/[^/?#]+/i.test(url.trim());
-  }
+  /** Canonical GitHub homepage for action routing (star/watch/issue/stats).
+      Backend-pre-resolved; null when the package has no GitHub-resolvable
+      URL field. Use this (not `pkg.homepage`) for any github.com call. */
+  let githubHp = $derived<string | null>(pkg?.githubHomepage ?? null);
 
   let githubStatsEligible = $derived(
-    !!pkg?.homepage &&
-      looksLikeGithubHomepage(pkg?.homepage) &&
+    githubHp !== null &&
       settings.effective.githubEnabled &&
       !settings.effective.paranoidMode,
   );
 
   /** The outcome from the GitHub store for the current homepage. */
   let githubOutcome = $derived<RepoStatsOutcome | null>(
-    githubStatsEligible && pkg?.homepage
-      ? (github.repoStatsCache.get(pkg.homepage) ?? { kind: "loading" })
+    githubStatsEligible && githubHp
+      ? (github.repoStatsCache.get(githubHp) ?? { kind: "loading" })
       : null,
   );
 
@@ -358,8 +355,8 @@
   // memoises in its cache so repeat opens of the same package don't
   // re-invoke.
   $effect(() => {
-    if (githubStatsEligible && pkg?.homepage) {
-      void github.getRepoStats(pkg.homepage);
+    if (githubStatsEligible && githubHp) {
+      void github.getRepoStats(githubHp);
     }
   });
 
@@ -410,8 +407,8 @@
   let starredState = $state<StarredOutcome>("unknown");
 
   $effect(() => {
-    // Reset and refetch whenever the homepage changes.
-    const hp = pkg?.homepage;
+    // Reset and refetch whenever the resolved github homepage changes.
+    const hp = githubHp;
     if (!hp || !githubActionsEligible) {
       starredState = "unknown";
       return;
@@ -431,7 +428,7 @@
     if (cached === undefined) {
       void github.isStarred(hp).then((result) => {
         // Only update if we're still on the same package.
-        if (pkg?.homepage === hp) {
+        if (githubHp === hp) {
           starredState = result;
         }
       });
@@ -504,14 +501,14 @@
   }
 
   async function onToggleStar() {
-    if (!pkg?.homepage || starToggling) return;
+    if (!githubHp || starToggling) return;
     if (!(await requireGithubSignIn("star this package"))) return;
     starToggling = true;
-    const hp = pkg.homepage;
+    const hp = githubHp;
     try {
       const target = await github.toggleStar(hp);
-      if (target === true) toast.success(`Starred ${pkg.name}`);
-      else if (target === false) toast.success(`Unstarred ${pkg.name}`);
+      if (target === true) toast.success(`Starred ${pkg!.name}`);
+      else if (target === false) toast.success(`Unstarred ${pkg!.name}`);
       starredState = github.starredCache.get(hp) ?? "unknown";
     } catch (e) {
       showActionFailureToast("update star", e);
@@ -527,15 +524,15 @@
   let watching = $state<boolean | null>(null);
 
   async function onToggleWatch() {
-    if (!pkg?.homepage || watchPending) return;
+    if (!githubHp || watchPending) return;
     if (!(await requireGithubSignIn("watch this package"))) return;
     watchPending = true;
     const want = !watching;
     try {
-      if (want) await github.watch(pkg.homepage);
-      else await github.unwatch(pkg.homepage);
+      if (want) await github.watch(githubHp);
+      else await github.unwatch(githubHp);
       watching = want;
-      toast.success(want ? `Watching ${pkg.name}` : `Stopped watching ${pkg.name}`);
+      toast.success(want ? `Watching ${pkg!.name}` : `Stopped watching ${pkg!.name}`);
     } catch (e) {
       showActionFailureToast("update watch", e);
     } finally {
@@ -571,12 +568,12 @@
   }
 
   async function openPackageIssue() {
-    if (!pkg?.homepage) return;
+    if (!githubHp || !pkg) return;
     if (!(await requireGithubSignIn("file an issue on this repo"))) return;
-    const repoInfo = githubRepoFromHomepage(pkg.homepage);
+    const repoInfo = githubRepoFromHomepage(githubHp);
     if (!repoInfo) return;
     const ver = await ensureAppVersion();
-    issueTargetHomepage = pkg.homepage;
+    issueTargetHomepage = githubHp;
     issueTargetRepo = repoInfo;
     issueInitialTitle = `[brew-browser] ${pkg.name}: `;
     issueInitialBody = [
@@ -974,7 +971,7 @@
                   onclick={openPackageIssue}
                   title={!githubSignedIn
                     ? "Sign in to GitHub to file an issue"
-                    : `File an issue against ${githubRepoFromHomepage(pkg.homepage)?.owner ?? ""}/${githubRepoFromHomepage(pkg.homepage)?.repo ?? ""}`}
+                    : `File an issue against ${githubHp ? githubRepoFromHomepage(githubHp)?.owner ?? "" : ""}/${githubHp ? githubRepoFromHomepage(githubHp)?.repo ?? "" : ""}`}
                 >
                   <MessageSquarePlus size={14} />
                   <span>File issue</span>

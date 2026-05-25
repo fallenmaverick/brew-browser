@@ -35,6 +35,12 @@ pub struct RawFormula {
     pub homepage: Option<String>,
     #[serde(default)]
     pub versions: Option<RawFormulaVersions>,
+    /// Upstream `urls: { stable: { url, ... }, head: { url, ... }, ... }`.
+    /// We only read the `url` strings — the rest (tag, revision, branch,
+    /// checksum) isn't useful for our GitHub-resolution layer. Optional
+    /// because brew formula JSON omits `urls` for tap-only or odd shapes.
+    #[serde(default)]
+    pub urls: Option<RawFormulaUrls>,
     #[serde(default)]
     pub build_dependencies: Vec<String>,
     #[serde(default)]
@@ -67,6 +73,23 @@ pub struct RawFormulaVersions {
     #[serde(default)]
     #[allow(dead_code)]
     pub head: Option<String>,
+}
+
+/// Upstream `urls` object on a formula record. Only the `url` field of
+/// each entry is relevant to our GitHub-resolution pass — the tag,
+/// revision, branch, and checksum fields are intentionally ignored.
+#[derive(Debug, Deserialize)]
+pub struct RawFormulaUrls {
+    #[serde(default)]
+    pub stable: Option<RawUrlEntry>,
+    #[serde(default)]
+    pub head: Option<RawUrlEntry>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RawUrlEntry {
+    #[serde(default)]
+    pub url: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -110,6 +133,12 @@ pub struct RawCask {
     pub desc: Option<String>,
     #[serde(default)]
     pub homepage: Option<String>,
+    /// Upstream `url` — points at the .pkg/.dmg/.zip artifact. Casks
+    /// hosted on GitHub Releases routinely have this field on
+    /// `github.com/<o>/<r>/releases/download/...` even when `homepage`
+    /// is a marketing/landing page.
+    #[serde(default)]
+    pub url: Option<String>,
     #[serde(default)]
     pub version: Option<String>,
     /// `installed` for casks is either a version string or null.
@@ -165,6 +194,22 @@ impl RawFormula {
 
         let stable_version = self.versions.as_ref().and_then(|v| v.stable.clone());
 
+        // Walk homepage → urls.stable.url → urls.head.url and surface
+        // the first GitHub-resolvable URL as a canonical homepage. See
+        // `Package::github_homepage` for the rationale (many formulae
+        // have non-GitHub homepages but GitHub-hosted source URLs).
+        let github_homepage = crate::github::resolve_github_homepage([
+            self.homepage.as_deref(),
+            self.urls
+                .as_ref()
+                .and_then(|u| u.stable.as_ref())
+                .and_then(|s| s.url.as_deref()),
+            self.urls
+                .as_ref()
+                .and_then(|u| u.head.as_ref())
+                .and_then(|h| h.url.as_deref()),
+        ]);
+
         Package {
             name: self.name.clone(),
             full_name: self.full_name.clone().unwrap_or_else(|| self.name.clone()),
@@ -182,6 +227,7 @@ impl RawFormula {
             // Formulae are CLI tools — no icon to fetch. The frontend
             // renders a glyph fallback for the `None` variant.
             icon_source: IconSource::None,
+            github_homepage,
         }
     }
 
@@ -248,6 +294,15 @@ impl RawCask {
             }
         };
 
+        // Walk homepage → top-level url and surface the first
+        // GitHub-resolvable URL as a canonical homepage. See
+        // `Package::github_homepage`. Casks with GitHub-Releases
+        // artifacts but marketing-page homepages are common.
+        let github_homepage = crate::github::resolve_github_homepage([
+            self.homepage.as_deref(),
+            self.url.as_deref(),
+        ]);
+
         Package {
             name: self.token.clone(),
             full_name: self.full_token.clone().unwrap_or_else(|| self.token.clone()),
@@ -264,6 +319,7 @@ impl RawCask {
             installed_on_request: self.installed.is_some(),
             installed_as_dependency: false,
             icon_source,
+            github_homepage,
         }
     }
 
@@ -478,6 +534,109 @@ mod tests {
         assert!(!pkg.full_name.is_empty(), "full_name should fall back to name");
     }
 
+    /// Phase 13b/12g — `github_homepage` resolution.
+    ///
+    /// Formulae with a non-GitHub homepage but a GitHub-hosted
+    /// `urls.stable.url` should still surface a canonical GitHub
+    /// homepage on the Package (the personal-stats card on the
+    /// Dashboard counts these).
+    #[test]
+    fn formula_resolves_github_homepage_from_urls_stable_when_homepage_is_non_github() {
+        let raw_json = serde_json::json!({
+            "formulae": [{
+                "name": "foo",
+                "homepage": "https://www.example.org/foo",
+                "urls": {
+                    "stable": {
+                        "url": "https://github.com/example-org/foo/archive/refs/tags/v1.2.3.tar.gz"
+                    }
+                }
+            }],
+            "casks": []
+        });
+        let parsed: RawInfoV2 = serde_json::from_value(raw_json).expect("parse");
+        let pkg = parsed.formulae[0].to_package();
+        assert_eq!(
+            pkg.homepage.as_deref(),
+            Some("https://www.example.org/foo"),
+            "raw homepage stays unchanged"
+        );
+        assert_eq!(
+            pkg.github_homepage.as_deref(),
+            Some("https://github.com/example-org/foo"),
+            "github_homepage canonicalized from urls.stable.url"
+        );
+    }
+
+    /// Formula homepage IS GitHub → resolution wins immediately on
+    /// homepage; urls fallthrough never consulted.
+    #[test]
+    fn formula_resolves_github_homepage_from_homepage_first() {
+        let raw_json = serde_json::json!({
+            "formulae": [{
+                "name": "foo",
+                "homepage": "https://github.com/canonical-owner/foo",
+                "urls": {
+                    "stable": {
+                        "url": "https://github.com/other-owner/foo/archive/refs/tags/v1.tar.gz"
+                    }
+                }
+            }],
+            "casks": []
+        });
+        let parsed: RawInfoV2 = serde_json::from_value(raw_json).expect("parse");
+        let pkg = parsed.formulae[0].to_package();
+        assert_eq!(
+            pkg.github_homepage.as_deref(),
+            Some("https://github.com/canonical-owner/foo"),
+            "homepage wins over urls.stable.url"
+        );
+    }
+
+    /// Formula with no GitHub-resolvable URL → github_homepage stays None.
+    #[test]
+    fn formula_with_no_github_url_has_none_github_homepage() {
+        let raw_json = serde_json::json!({
+            "formulae": [{
+                "name": "foo",
+                "homepage": "https://www.example.org/foo",
+                "urls": {
+                    "stable": {
+                        "url": "https://ftp.example.com/foo-1.0.tar.gz"
+                    }
+                }
+            }],
+            "casks": []
+        });
+        let parsed: RawInfoV2 = serde_json::from_value(raw_json).expect("parse");
+        let pkg = parsed.formulae[0].to_package();
+        assert!(pkg.github_homepage.is_none());
+    }
+
+    /// Formula head url fills in when both homepage and stable url miss.
+    #[test]
+    fn formula_falls_through_to_head_url() {
+        let raw_json = serde_json::json!({
+            "formulae": [{
+                "name": "foo",
+                "homepage": "https://example.org",
+                "urls": {
+                    "head": {
+                        "url": "https://github.com/example/foo.git"
+                    }
+                }
+            }],
+            "casks": []
+        });
+        let parsed: RawInfoV2 = serde_json::from_value(raw_json).expect("parse");
+        let pkg = parsed.formulae[0].to_package();
+        assert_eq!(
+            pkg.github_homepage.as_deref(),
+            Some("https://github.com/example/foo"),
+            "head url resolves when homepage and stable url miss"
+        );
+    }
+
     // ---------- RawCask → Package ----------
 
     #[test]
@@ -522,6 +681,51 @@ mod tests {
         let pkg = parsed.casks[0].to_package();
         assert_eq!(pkg.kind, PackageKind::Cask);
         assert!(!pkg.name.is_empty());
+    }
+
+    /// Cask with non-GitHub `homepage` but GitHub Releases `url` →
+    /// github_homepage resolves from the binary URL. This is the bulk
+    /// of the coverage win on the Dashboard's personal-stats card.
+    #[test]
+    fn cask_resolves_github_homepage_from_url_when_homepage_is_non_github() {
+        let raw_json = serde_json::json!({
+            "formulae": [],
+            "casks": [{
+                "token": "foo-app",
+                "homepage": "https://foo-app.com",
+                "url": "https://github.com/example-org/foo-app/releases/download/v1.2.3/foo-1.2.3.dmg",
+                "version": "1.2.3"
+            }]
+        });
+        let parsed: RawInfoV2 = serde_json::from_value(raw_json).expect("parse");
+        let pkg = parsed.casks[0].to_package();
+        assert_eq!(
+            pkg.homepage.as_deref(),
+            Some("https://foo-app.com"),
+            "raw homepage stays unchanged"
+        );
+        assert_eq!(
+            pkg.github_homepage.as_deref(),
+            Some("https://github.com/example-org/foo-app"),
+            "github_homepage resolved from cask url field"
+        );
+    }
+
+    /// Cask with neither GitHub homepage nor GitHub url → None.
+    #[test]
+    fn cask_with_no_github_url_has_none_github_homepage() {
+        let raw_json = serde_json::json!({
+            "formulae": [],
+            "casks": [{
+                "token": "foo-app",
+                "homepage": "https://foo-app.com",
+                "url": "https://cdn.foo-app.com/releases/foo-1.0.dmg",
+                "version": "1.0"
+            }]
+        });
+        let parsed: RawInfoV2 = serde_json::from_value(raw_json).expect("parse");
+        let pkg = parsed.casks[0].to_package();
+        assert!(pkg.github_homepage.is_none());
     }
 
     // ---------- RawOutdatedEntry → OutdatedPackage ----------
@@ -623,6 +827,7 @@ mod tests {
             tap: None,
             desc: None,
             homepage: homepage.map(|s| s.to_string()),
+            url: None,
             version: None,
             installed: installed.map(|s| s.to_string()),
             pinned: false,
@@ -708,6 +913,7 @@ mod tests {
             license: None,
             homepage: Some("https://www.gnu.org/software/wget/".into()),
             versions: None,
+            urls: None,
             build_dependencies: vec![],
             dependencies: vec![],
             optional_dependencies: vec![],

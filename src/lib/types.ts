@@ -62,6 +62,22 @@ export interface Package {
   installedOnRequest: boolean;
   installedAsDependency: boolean;
   iconSource: IconSource;
+  /**
+   * Canonical `https://github.com/<owner>/<repo>` URL when ANY of the
+   * package's GitHub-resolvable URL fields parses cleanly via the
+   * backend's `extract_github_repo` (the tolerant variant). Null when
+   * no candidate URL maps to a GitHub repo.
+   *
+   * Backend walks `homepage` → `urls.stable.url` → `urls.head.url`
+   * (formula) or `homepage` → `url` (cask), so packages whose `homepage`
+   * is a marketing site but whose source/binary lives on GitHub still
+   * surface a canonical homepage here.
+   *
+   * Use this (not `homepage`) for GitHub feature routing — star, watch,
+   * file-issue, repo-stats. Use `homepage` for display + "Open homepage"
+   * link.
+   */
+  githubHomepage: string | null;
 }
 
 export interface PackageList {

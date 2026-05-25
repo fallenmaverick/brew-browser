@@ -90,14 +90,16 @@
   // the bounded fan-out via a 50-permit semaphore; we kick it off
   // once the package list is loaded so we have homepages to probe.
 
-  /** Installed packages that have a parseable github.com homepage. */
+  /** Installed packages that resolve to a GitHub repo via any of their
+      URL fields. Reads the backend-pre-resolved `githubHomepage` so the
+      count includes packages with non-GitHub homepages but GitHub-hosted
+      `urls.stable.url` (formula) or `url` (cask). Canonical
+      `https://github.com/<o>/<r>` form, ready for `batchIsStarred`. */
   let installedGithubHomepages = $derived.by<string[]>(() => {
     if (!packages.all || packages.all.length === 0) return [];
     return packages.all
-      .map((p) => p.homepage ?? "")
-      .filter((hp) =>
-        /^https?:\/\/github\.com\/[^/]+\/[^/?#]+/i.test(hp.trim()),
-      );
+      .map((p) => p.githubHomepage)
+      .filter((hp): hp is string => hp !== null && hp !== undefined);
   });
 
   let personalStatsEligible = $derived(

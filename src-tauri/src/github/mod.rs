@@ -77,4 +77,4 @@ pub use auth::{
 };
 pub use stats::{fetch_repo_stats, RepoStats};
 #[allow(unused_imports)]
-pub use url::{parse_github_url, GithubRepo};
+pub use url::{extract_github_repo, parse_github_url, resolve_github_homepage, GithubRepo};

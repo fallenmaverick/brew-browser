@@ -1,7 +1,7 @@
 # Active Context
 
 **Date:** 2026-05-25 (v0.3.0 prep, post-compact follow-up session)
-**State:** Phase 15 fix-up complete — all 5 CRITICAL findings resolved + 1 IMPORTANT (cached_available clear). v0.3.0 is now blocker-clean. Remaining v0.3.0 work is release plumbing (minisign keypair, version bump, build, ship).
+**State:** Phase 15 fix-up complete + GitHub package resolution expanded beyond homepage (task #17). v0.3.0 is blocker-clean. Remaining v0.3.0 work is release plumbing (minisign keypair, version bump, build, ship).
 
 ## Repo
 
@@ -47,7 +47,7 @@ Spent ~6 hours debugging the toast cascade from issue #1. The chase:
 
 ## Tests & lint (current)
 
-- `cargo test`: **450 passed**, 0 failed, 6 ignored (447 → 450, +3 new for Phase 15 fix-up: `skip_refuses_on_corrupt_settings`, `skip_rejects_empty_version`, `install_clears_cached_available_on_success`)
+- `cargo test`: **473 passed**, 0 failed, 6 ignored (450 → 473, +23 new for GitHub resolution expansion: 14 `extract_github_repo` tests, 6 `resolve_github_homepage` tests, 6 `to_package` resolution tests minus 3 that overlap)
 - `cargo clippy --all-targets -- -D warnings`: clean
 - `cargo check`: clean
 - `npm run check`: 0 errors, 3 pre-existing warnings (SettingsSectionGitHub unused-CSS, tsconfig-node-types)

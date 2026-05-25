@@ -195,6 +195,132 @@ pub fn parse_github_url(homepage: &str) -> Option<GithubRepo> {
     })
 }
 
+/// Tolerant extractor for the package-resolution layer.
+///
+/// `parse_github_url` is strict — it only accepts the canonical
+/// `https://github.com/<owner>/<repo>` shape (with the small set of
+/// recognized suffixes: `.git`, trailing slash, `/tree/...`, `/blob/...`).
+/// That's the right strictness for the security-sensitive call sites
+/// (api fetches, action commands).
+///
+/// Package URL fields from upstream (formula `urls.stable.url`,
+/// formula `urls.head.url`, cask top-level `url`) routinely point at
+/// `/archive/refs/tags/...`, `/releases/download/...`, or longer paths.
+/// We want to extract `(owner, repo)` from those too.
+///
+/// This function:
+/// 1. Tries `parse_github_url` first (covers the homepage case).
+/// 2. On miss, peels the URL down to its first two non-empty path
+///    segments and retries against `parse_github_url`.
+///
+/// Every defense in `parse_github_url` still applies — host must be
+/// `github.com` exactly, scheme must be http/https, owner/repo must
+/// match the strict character set, no `..` segments, no query/fragment
+/// on the resulting canonical URL.
+pub fn extract_github_repo(url: &str) -> Option<GithubRepo> {
+    let url = url.trim();
+    if url.is_empty() {
+        return None;
+    }
+
+    // Fast path: already a clean owner/repo URL.
+    if let Some(r) = parse_github_url(url) {
+        return Some(r);
+    }
+
+    // Slow path: strip scheme + authority, then take the first two
+    // non-empty path segments and rebuild a canonical URL the strict
+    // parser will accept.
+    let (scheme_len, _) = if url.len() >= 8 && url[..8].eq_ignore_ascii_case("https://") {
+        (8usize, true)
+    } else if url.len() >= 7 && url[..7].eq_ignore_ascii_case("http://") {
+        (7usize, false)
+    } else {
+        return None;
+    };
+
+    let rest = &url[scheme_len..];
+    if rest.is_empty() {
+        return None;
+    }
+
+    let auth_end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
+    let authority = &rest[..auth_end];
+    if authority.is_empty() {
+        return None;
+    }
+
+    let host_with_port = authority.rsplit('@').next().unwrap_or(authority);
+    let host = host_with_port.split(':').next().unwrap_or(host_with_port);
+
+    // Host must be exactly github.com. Mirrors the strict parser's host
+    // gate — subdomains, suffix-confusable hostnames, and IP literals
+    // are all rejected.
+    if !host.eq_ignore_ascii_case("github.com") {
+        return None;
+    }
+
+    let path = if auth_end >= rest.len() {
+        ""
+    } else {
+        &rest[auth_end..]
+    };
+
+    // Split off query/fragment so a `?ref=main` on an archive URL
+    // doesn't pollute the segment list.
+    let path_without_query = path
+        .split(['?', '#'])
+        .next()
+        .unwrap_or(path);
+
+    let segs: Vec<&str> = path_without_query
+        .split('/')
+        .filter(|s| !s.is_empty())
+        .collect();
+
+    if segs.len() < 2 {
+        return None;
+    }
+
+    let owner = segs[0];
+    // Strip a trailing `.git` from the second segment so URLs like
+    // `https://github.com/foo/bar.git/...` resolve to `bar`. Whatever
+    // remains gets re-validated by `parse_github_url` against the
+    // strict owner/repo character set, so a synthesized segment that
+    // doesn't match GitHub's lexical rules still fails closed here.
+    let repo = segs[1].trim_end_matches(".git");
+
+    let canonical = format!("https://github.com/{owner}/{repo}");
+    parse_github_url(&canonical)
+}
+
+/// Resolve a GitHub repo from a set of candidate URLs in priority order.
+/// Returns the canonical `https://github.com/<owner>/<repo>` string the
+/// rest of the system uses, suitable for passing to `parse_github_url`,
+/// `api_url`, or `cache_key`.
+///
+/// Used by the brew-info → `Package` conversion layer to widen GitHub
+/// detection beyond the upstream `homepage` field — formulae routinely
+/// have non-github homepages (project sites, docs) but GitHub-hosted
+/// `urls.stable.url` or `urls.head.url`. Same for casks pointing
+/// `homepage` at a marketing page but hosting the .pkg/.dmg on GitHub
+/// Releases.
+///
+/// Iteration order matches the upstream brew metadata's authoritativeness:
+/// homepage (most explicit "the project's GitHub home") wins over the
+/// less direct binary-URL fields.
+pub fn resolve_github_homepage<'a, I>(candidates: I) -> Option<String>
+where
+    I: IntoIterator<Item = Option<&'a str>>,
+{
+    for c in candidates.into_iter().flatten() {
+        if let Some(r) = extract_github_repo(c) {
+            return Some(format!("https://github.com/{}/{}", r.owner, r.repo));
+        }
+    }
+    None
+}
+
 /// Apply GitHub's owner/repo lexical rules. Per GitHub:
 /// - 1..=39 characters
 /// - allowed: letters, digits, `-`, `_`, `.`
@@ -401,5 +527,153 @@ mod tests {
     fn api_url_uses_canonical_api_host() {
         let r = parse_github_url("https://github.com/foo/bar").expect("parse");
         assert_eq!(r.api_url(), "https://api.github.com/repos/foo/bar");
+    }
+
+    // ---------- extract_github_repo: tolerant variant ----------
+
+    #[test]
+    fn extract_handles_canonical_url_via_strict_fast_path() {
+        let r = extract_github_repo("https://github.com/foo/bar").expect("extract");
+        assert_eq!(r, GithubRepo { owner: "foo".into(), repo: "bar".into() });
+    }
+
+    #[test]
+    fn extract_handles_archive_tag_url() {
+        // The shape formulae routinely have in `urls.stable.url`.
+        let r = extract_github_repo(
+            "https://github.com/foo/bar/archive/refs/tags/v1.2.3.tar.gz",
+        )
+        .expect("extract");
+        assert_eq!(r, GithubRepo { owner: "foo".into(), repo: "bar".into() });
+    }
+
+    #[test]
+    fn extract_handles_releases_download_url() {
+        // The shape casks routinely have in their top-level `url`.
+        let r = extract_github_repo(
+            "https://github.com/foo/bar/releases/download/v1.2.3/foo-1.2.3.dmg",
+        )
+        .expect("extract");
+        assert_eq!(r, GithubRepo { owner: "foo".into(), repo: "bar".into() });
+    }
+
+    #[test]
+    fn extract_handles_archive_url_with_dot_git_segment() {
+        let r = extract_github_repo(
+            "https://github.com/foo/bar.git/archive/refs/tags/v1.0.0.tar.gz",
+        )
+        .expect("extract");
+        assert_eq!(r.repo, "bar");
+    }
+
+    #[test]
+    fn extract_handles_codeload_in_path_but_rejects_codeload_host() {
+        // codeload.github.com is a DIFFERENT host; reject it (subdomain rule).
+        assert!(extract_github_repo("https://codeload.github.com/foo/bar/tar.gz/main").is_none());
+    }
+
+    #[test]
+    fn extract_rejects_subdomain_in_archive_url() {
+        assert!(extract_github_repo("https://raw.githubusercontent.com/foo/bar/main/file").is_none());
+        assert!(extract_github_repo("https://gist.github.com/foo/bar/archive/x.tar.gz").is_none());
+    }
+
+    #[test]
+    fn extract_rejects_disallowed_owner_chars_in_archive_url() {
+        assert!(extract_github_repo("https://github.com/foo!/bar/archive/refs/tags/v1.tar.gz").is_none());
+        assert!(extract_github_repo("https://github.com/föö/bar/archive/refs/tags/v1.tar.gz").is_none());
+    }
+
+    #[test]
+    fn extract_handles_tree_ref_url_via_strict_fast_path() {
+        // `/foo/bar/tree/main` is the canonical "viewing a branch" URL.
+        // The strict parser already trims the `/tree/<ref>` suffix so
+        // this resolves to foo/bar (not foo/tree).
+        let r = extract_github_repo("https://github.com/foo/bar/tree/main").expect("extract");
+        assert_eq!(r, GithubRepo { owner: "foo".into(), repo: "bar".into() });
+    }
+
+    #[test]
+    fn extract_strips_query_and_fragment_in_archive_url() {
+        let r = extract_github_repo("https://github.com/foo/bar/releases?tab=releases#v1")
+            .expect("extract");
+        assert_eq!(r, GithubRepo { owner: "foo".into(), repo: "bar".into() });
+    }
+
+    #[test]
+    fn extract_rejects_path_traversal_in_owner() {
+        assert!(extract_github_repo("https://github.com/../bar/archive/foo").is_none());
+        assert!(extract_github_repo("https://github.com/foo/../bar/archive").is_none());
+    }
+
+    #[test]
+    fn extract_returns_none_for_empty_or_garbage() {
+        assert!(extract_github_repo("").is_none());
+        assert!(extract_github_repo("not-a-url").is_none());
+        assert!(extract_github_repo("ftp://github.com/foo/bar").is_none());
+    }
+
+    // ---------- resolve_github_homepage: priority walk ----------
+
+    #[test]
+    fn resolve_picks_homepage_when_homepage_is_github() {
+        let out = resolve_github_homepage([
+            Some("https://github.com/owner/repo"),
+            Some("https://github.com/owner/other-repo/archive/refs/tags/v1.tar.gz"),
+        ]);
+        assert_eq!(out.as_deref(), Some("https://github.com/owner/repo"));
+    }
+
+    #[test]
+    fn resolve_falls_through_to_url_when_homepage_is_not_github() {
+        // Typical formula shape: marketing homepage + GitHub source URL.
+        let out = resolve_github_homepage([
+            Some("https://example.org"),
+            Some("https://github.com/foo/bar/archive/refs/tags/v1.2.3.tar.gz"),
+            None,
+        ]);
+        assert_eq!(out.as_deref(), Some("https://github.com/foo/bar"));
+    }
+
+    #[test]
+    fn resolve_walks_through_to_head_url_when_homepage_and_stable_skip() {
+        let out = resolve_github_homepage([
+            Some("https://example.org"),
+            None,
+            Some("https://github.com/foo/bar.git"),
+        ]);
+        assert_eq!(out.as_deref(), Some("https://github.com/foo/bar"));
+    }
+
+    #[test]
+    fn resolve_returns_none_when_no_candidate_matches() {
+        let out = resolve_github_homepage([
+            Some("https://example.org"),
+            Some("https://gitlab.com/foo/bar"),
+            None,
+        ]);
+        assert_eq!(out, None);
+    }
+
+    #[test]
+    fn resolve_skips_empty_and_whitespace_candidates() {
+        let out = resolve_github_homepage([
+            Some(""),
+            Some("   "),
+            Some("https://github.com/foo/bar"),
+        ]);
+        assert_eq!(out.as_deref(), Some("https://github.com/foo/bar"));
+    }
+
+    #[test]
+    fn resolve_emits_canonical_form_strict_parser_accepts() {
+        // The output must always be re-parseable by the strict parser.
+        let out = resolve_github_homepage([
+            Some("https://github.com/foo/bar/releases/download/v1/foo.dmg"),
+        ])
+        .expect("resolve");
+        let reparsed = parse_github_url(&out).expect("reparseable");
+        assert_eq!(reparsed.owner, "foo");
+        assert_eq!(reparsed.repo, "bar");
     }
 }
