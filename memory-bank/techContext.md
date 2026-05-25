@@ -28,8 +28,8 @@
 ```
 brew-browser/
 ├── LICENSE                          MIT
-├── PLAN.md                          full plan + phase tracker
 ├── README.md                        loud open-source narrative
+├── docs/                            BUILD.md, PLAN.md (phase tracker), PHILOSOPHY.md, release-notes/, icon/, screenshots/
 ├── package.json                     name=brew-browser
 ├── src/                             Svelte frontend
 │   ├── app.html

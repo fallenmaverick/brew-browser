@@ -61,7 +61,7 @@ brew-browser/
 │   ├── tauri.conf.json
 │   └── capabilities/default.json
 ├── memory-bank/                    living design docs (read these before any non-trivial change)
-├── PLAN.md
+├── docs/                           BUILD instructions, PLAN.md, PHILOSOPHY.md, release-notes/, icon/, screenshots/
 ├── LICENSE                         MIT
 └── README.md
 ```
