@@ -114,6 +114,7 @@ pub fn run() {
             brew_info,
             brew_search,
             brew_search_desc,
+            local_search,
             brew_install,
             brew_uninstall,
             brew_upgrade,

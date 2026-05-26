@@ -169,6 +169,265 @@ fn is_brew_search_no_match(e: &BrewError) -> bool {
     }
 }
 
+// ----------------------------------------------------------------------------
+// local_search — in-memory union search across name + AI summary + friendly
+// name + upstream desc + category labels + (Tier B) tags.
+//
+// `brew search` only matches package names; `brew search --desc` adds brew's
+// own `desc` field. Neither has any knowledge of our local data:
+//   - AI-curated `friendlyName` (e.g. "VLC media player" for token `vlc`)
+//   - AI summary (1-2 sentence "what + when" description)
+//   - Category labels ("AI & ML", "Video & Audio")
+//   - Enrichment tags (Tier B)
+//
+// This command scans everything we have in-process from the catalog +
+// enrichment + categories caches. ~16k entries × ~6 fields × substring scan =
+// well under 20ms even for 3-term queries. Returns the same `SearchResults`
+// shape as `brew_search` so callers can swap with no other changes.
+//
+// Multi-term queries are AND'd: every term must match at least one field.
+// Per-term score = max(weight × match) across fields. Total = sum across
+// terms. Cap at TOP_N results to keep the UI list comfortable.
+// ----------------------------------------------------------------------------
+
+const LOCAL_SEARCH_TOP_N: usize = 200;
+
+/// Field-match weights. Higher = more authoritative match. Tuned so a
+/// query that matches a package's name always outranks one that only
+/// matches a free-form description, and category-label matches sit
+/// between "name" and "summary" (they're a strong intent signal — the
+/// user is asking for a domain — but less specific than a name match).
+///
+/// The `#[allow(dead_code)]` works around a Rust dead-code analyzer
+/// quirk: when these `pub const`s are only referenced from a closure
+/// defined inside an `async fn` in the same module, the analyzer
+/// sometimes flags them unused even when they're materially in the
+/// emitted code. The references at the call sites below are real.
+#[allow(dead_code)]
+mod weight {
+    pub const NAME_EXACT: u32 = 1000;
+    pub const NAME_STARTS_WITH: u32 = 700;
+    pub const NAME_SUBSTRING: u32 = 500;
+    pub const FRIENDLY_NAME: u32 = 350;
+    pub const CATEGORY_LABEL: u32 = 280;
+    pub const SUMMARY: u32 = 180;
+    pub const DESC: u32 = 120;
+    pub const TAG: u32 = 100;
+}
+
+#[tauri::command]
+pub async fn local_search(
+    query: String,
+    state: State<'_, AppState>,
+) -> Result<SearchResults, BrewError> {
+    validate_search_query(&query)?;
+
+    // Parse terms: split on whitespace, lowercase, dedupe-by-set, drop empty.
+    let mut terms: Vec<String> = query
+        .split_whitespace()
+        .map(|t| t.to_ascii_lowercase())
+        .filter(|t| !t.is_empty())
+        .collect();
+    terms.sort();
+    terms.dedup();
+    if terms.is_empty() {
+        return Ok(SearchResults {
+            query,
+            formulae: vec![],
+            casks: vec![],
+            generated_at: Utc::now().to_rfc3339(),
+        });
+    }
+
+    // Pull the three in-process caches we'll scan. All three are
+    // Arc-cloned out of their respective locks so the rest of this
+    // function operates on cheap references with no contention.
+    let catalog = {
+        let guard = state.catalog.read().await;
+        std::sync::Arc::clone(&*guard)
+    };
+    let enrichment = match crate::commands::enrichment::enrichment_data(state.clone()).await {
+        Ok(arc) => Some(arc),
+        Err(_) => None, // best-effort; if enrichment fails we just lose AI fields
+    };
+    let categories = match crate::commands::categories::categories_data(state.clone()).await {
+        Ok(arc) => Some(arc),
+        Err(_) => None,
+    };
+
+    let installed_set = build_installed_set(&state).await;
+
+    // Build a token → Vec<category_label> map once so per-row scoring is
+    // a cheap lookup instead of an O(categories) scan per token.
+    let mut formula_labels: std::collections::HashMap<&str, Vec<&str>> = std::collections::HashMap::new();
+    let mut cask_labels: std::collections::HashMap<&str, Vec<&str>> = std::collections::HashMap::new();
+    if let Some(cat) = categories.as_deref() {
+        for (token, slugs) in cat.formulae.iter() {
+            let labels: Vec<&str> = slugs
+                .iter()
+                .filter_map(|s| cat.categories.get(s).map(|m| m.label.as_str()))
+                .collect();
+            if !labels.is_empty() {
+                formula_labels.insert(token.as_str(), labels);
+            }
+        }
+        for (token, slugs) in cat.casks.iter() {
+            let labels: Vec<&str> = slugs
+                .iter()
+                .filter_map(|s| cat.categories.get(s).map(|m| m.label.as_str()))
+                .collect();
+            if !labels.is_empty() {
+                cask_labels.insert(token.as_str(), labels);
+            }
+        }
+    }
+
+    // Per-package scoring. Returns Some((score, description)) when ALL
+    // terms find a match somewhere in the package's searchable fields.
+    // Description is the best free-text we found for the row (AI summary
+    // preferred over upstream desc) so the frontend can show it without
+    // a second IPC round-trip.
+    let score_pkg = |name: &str,
+                     desc: Option<&str>,
+                     labels: &[&str]|
+     -> Option<(u32, Option<String>)> {
+        // AI summary + friendly name from enrichment, if available.
+        let entry = enrichment.as_deref().and_then(|e| e.entries.get(name));
+        let friendly = entry.and_then(|e| e.friendly_name.as_deref());
+        let summary = entry.and_then(|e| e.summary.as_deref());
+        let tags: Vec<&str> = entry
+            .map(|e| e.tags.iter().map(|s| s.as_str()).collect())
+            .unwrap_or_default();
+
+        let name_lc = name.to_ascii_lowercase();
+        let desc_lc = desc.map(|s| s.to_ascii_lowercase());
+        let friendly_lc = friendly.map(|s| s.to_ascii_lowercase());
+        let summary_lc = summary.map(|s| s.to_ascii_lowercase());
+        let labels_lc: Vec<String> = labels.iter().map(|s| s.to_ascii_lowercase()).collect();
+        let tags_lc: Vec<String> = tags.iter().map(|s| s.to_ascii_lowercase()).collect();
+
+        let mut total: u32 = 0;
+        for term in &terms {
+            let mut best: u32 = 0;
+            // Name match — exact > starts-with > substring.
+            if name_lc == *term {
+                best = best.max(weight::NAME_EXACT);
+            } else if name_lc.starts_with(term) {
+                best = best.max(weight::NAME_STARTS_WITH);
+            } else if name_lc.contains(term) {
+                best = best.max(weight::NAME_SUBSTRING);
+            }
+            // friendly name substring.
+            if let Some(fl) = &friendly_lc {
+                if fl.contains(term) {
+                    best = best.max(weight::FRIENDLY_NAME);
+                }
+            }
+            // category labels — substring on any label.
+            for label in &labels_lc {
+                if label.contains(term) {
+                    best = best.max(weight::CATEGORY_LABEL);
+                    break;
+                }
+            }
+            // summary substring.
+            if let Some(sl) = &summary_lc {
+                if sl.contains(term) {
+                    best = best.max(weight::SUMMARY);
+                }
+            }
+            // desc substring.
+            if let Some(dl) = &desc_lc {
+                if dl.contains(term) {
+                    best = best.max(weight::DESC);
+                }
+            }
+            // tag substring.
+            for tag in &tags_lc {
+                if tag.contains(term) {
+                    best = best.max(weight::TAG);
+                    break;
+                }
+            }
+
+            if best == 0 {
+                // This term didn't match anywhere — AND semantics means the
+                // whole package is rejected.
+                return None;
+            }
+            total = total.saturating_add(best);
+        }
+
+        // Description to show in the row: AI summary preferred over upstream desc.
+        let display_desc = summary.map(|s| s.to_string()).or_else(|| desc.map(|s| s.to_string()));
+        Some((total, display_desc))
+    };
+
+    // Score every formula + cask.
+    let mut formula_hits: Vec<(u32, SearchHit)> = Vec::new();
+    for (token, formula) in catalog.formulae.iter() {
+        let labels = formula_labels
+            .get(token.as_str())
+            .map(|v| v.as_slice())
+            .unwrap_or(&[]);
+        if let Some((score, desc)) = score_pkg(token, formula.desc.as_deref(), labels) {
+            formula_hits.push((
+                score,
+                SearchHit {
+                    name: token.clone(),
+                    kind: PackageKind::Formula,
+                    installed: installed_set.contains(token),
+                    description: desc,
+                },
+            ));
+        }
+    }
+    let mut cask_hits: Vec<(u32, SearchHit)> = Vec::new();
+    for (token, cask) in catalog.casks.iter() {
+        let labels = cask_labels
+            .get(token.as_str())
+            .map(|v| v.as_slice())
+            .unwrap_or(&[]);
+        if let Some((score, desc)) = score_pkg(token, cask.desc.as_deref(), labels) {
+            cask_hits.push((
+                score,
+                SearchHit {
+                    name: token.clone(),
+                    kind: PackageKind::Cask,
+                    installed: installed_set.contains(token),
+                    description: desc,
+                },
+            ));
+        }
+    }
+
+    // Sort by score desc, then name asc within ties.
+    formula_hits.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.name.cmp(&b.1.name)));
+    cask_hits.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.name.cmp(&b.1.name)));
+
+    // Apply combined cap, splitting fairly between formulae and casks
+    // when both have many hits. Simple split: take up to half from each.
+    // If one side is short, the other side fills the remainder.
+    let f_cap = LOCAL_SEARCH_TOP_N / 2;
+    let c_cap = LOCAL_SEARCH_TOP_N - f_cap;
+    let f_take = formula_hits.len().min(f_cap);
+    let c_take = cask_hits.len().min(c_cap);
+    let extra = (f_cap - f_take) + (c_cap - c_take);
+    // Spill any unused half capacity into the other side.
+    let f_final = f_take + extra.min(formula_hits.len().saturating_sub(f_take));
+    let c_final = c_take + (LOCAL_SEARCH_TOP_N - f_final).min(cask_hits.len().saturating_sub(c_take));
+
+    let formulae: Vec<SearchHit> = formula_hits.into_iter().take(f_final).map(|(_, h)| h).collect();
+    let casks: Vec<SearchHit> = cask_hits.into_iter().take(c_final).map(|(_, h)| h).collect();
+
+    Ok(SearchResults {
+        query,
+        formulae,
+        casks,
+        generated_at: Utc::now().to_rfc3339(),
+    })
+}
+
 fn validate_search_query(q: &str) -> Result<(), BrewError> {
     if q.trim().is_empty() {
         return Err(BrewError::InvalidArgument {

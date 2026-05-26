@@ -1,9 +1,16 @@
 /**
  * Search store — drives the Discover view + the command-palette index search.
- * Debounced query → `brew_search`.
+ * Debounced query → `local_search` (the in-process union scan across
+ * catalog + enrichment + categories). Replaced `brew_search` in v0.3.1:
+ * brew's own search only matches package names; local_search matches
+ * name + AI-curated friendlyName + AI summary + upstream desc + category
+ * labels + enrichment tags, with field-weighted scoring.
+ *
+ * `brewSearch` remains exposed in api.ts for any future caller that
+ * explicitly wants brew's view (none today — kept for parity).
  */
 
-import { brewSearch } from "$lib/api";
+import { localSearch } from "$lib/api";
 import { isBrewError, type SearchResults } from "$lib/types";
 
 class SearchStore {
@@ -31,7 +38,7 @@ class SearchStore {
     this.loading = true;
     this.error = null;
     try {
-      this.results = await brewSearch(q);
+      this.results = await localSearch(q);
       // push to recent (dedupe, cap 8)
       this.recent = [q, ...this.recent.filter((r) => r !== q)].slice(0, 8);
     } catch (e) {

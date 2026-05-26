@@ -92,6 +92,24 @@ export function brewSearchDesc(query: string): Promise<SearchResults> {
   return invoke<SearchResults>("brew_search_desc", { query });
 }
 
+/**
+ * In-process union search across catalog + AI summary + friendly name +
+ * upstream desc + category labels + enrichment tags.
+ *
+ * Strictly more powerful than `brew_search` for the brew-browser
+ * Discover UX: matches a query against everything we have in-memory,
+ * scores by field-weight (name > friendly > category > summary > desc
+ * > tag), and returns the same `SearchResults` shape with each hit's
+ * best description pre-populated so the row renders without a second
+ * round-trip.
+ *
+ * Multi-term queries AND across fields. Cap is 200 hits split between
+ * formulae and casks.
+ */
+export function localSearch(query: string): Promise<SearchResults> {
+  return invoke<SearchResults>("local_search", { query });
+}
+
 // ============================================================
 // Phase 3 — install / uninstall / upgrade (streaming)
 // ============================================================
