@@ -1,7 +1,7 @@
 # Active Context
 
-**Date:** 2026-05-25 (v0.3.1 release prep)
-**State:** v0.3.0 shipped same-day. v0.3.1 cumulative point release in flight — adds magic `local_search`, curated Upgrade modal, Refresh-does-brew-update-too, donut hover, unified Description/Version columns across all list views, Report-to-brew-browser action button, friendly-message rendering everywhere, Activity persistence hardening, bundle id rename (`dev.openbrew.browser` → `com.zerologic.brew-browser`), root → docs/ reorganization. 13 commits since `d7c2bca`, all on `main`. Building + tagging now.
+**Date:** 2026-05-26 (v0.3.1 released)
+**State:** v0.3.1 signed + notarized + stapled + tagged + GH-released + manifest deployed. Same-day cumulative release on top of v0.3.0. Auto-updater path validated end-to-end (manifest reachable, asset 200 via redirect, sha256 + minisign verified). v0.3.0 users get this via Settings → Network → Updates → Check now; one-time GitHub re-sign-in via the Re-authorize toast button (Keychain ACL is tied to the renamed bundle id).
 
 ## Repo
 

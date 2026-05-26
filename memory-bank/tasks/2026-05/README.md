@@ -23,7 +23,7 @@ Per-task records for May 2026 work on brew-browser. **Retroactively reconstructe
 | 15 | [GitHub integration completion (toast pattern + scope parsing + watch scope + per-action gate + Octocat chip + re-auth UX)](./15-github-integration-completion.md) | 2026-05-25 | uncommitted | target v0.3.0 |
 | 16 | [Phase 15 fix-up pass: 5 CRITICAL findings resolved](./16-phase-15-fixup-pass.md) | 2026-05-25 | `1bfe21f` | v0.3.0 |
 | 17 | [Expand GitHub package resolution beyond homepage field](./17-github-resolution-beyond-homepage.md) | 2026-05-25 | `820c1f0` | v0.3.0 |
-| 18 | [v0.3.1 release — magic search + curated upgrade + identity cleanup + lists overhaul](./18-v0.3.1-release.md) | 2026-05-25 | uncommitted | v0.3.1 |
+| 18 | [v0.3.1 release — magic search + curated upgrade + identity cleanup + lists overhaul](./18-v0.3.1-release.md) | 2026-05-25 | `6b97e65` (prep) + `v0.3.1` tag | v0.3.1 |
 | 99 | [Deferred / dropped tasks](./99-deferred-and-dropped.md) | (ongoing) | — | — |
 
 ## Reconstruction notes

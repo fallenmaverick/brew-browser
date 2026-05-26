@@ -7,7 +7,35 @@ Read this first, then `activeContext.md`, then the latest entries in `progress.m
 
 ---
 
-## Current state
+## v0.3.1 shipped (2026-05-26)
+
+Same-day cumulative point release on top of v0.3.0. Highlights: magic `local_search` (catalog + AI summary + friendlyName + category labels + tags in one weighted union scan), curated Upgrade modal, Refresh-actually-runs-brew-update-too, unified Description + Version columns across Library / Discover / Trending, donut hover-with-counts, Report-to-brew-browser button on every error toast + the Activity drawer failed-job footer, Activity persistence hardening, bundle id rename (`dev.openbrew.browser` → `com.zerologic.brew-browser`), root → docs/ reorganization.
+
+Released as `v0.3.1` tag + GH release with both `.dmg` (fresh install) and `.app.tar.gz` (auto-updater) assets. Manifest deployed to `umacbookpro:Sites/brew-browser/updater.json`. Asset rename via `gh api PATCH` (the `gh release create #newname` syntax only sets the label, not the filename). Full release write-up at `memory-bank/tasks/2026-05/18-v0.3.1-release.md` + `docs/release-notes/0.3.1.md`.
+
+### v0.3.x polish queue (small wins, batch into v0.3.2 when there's enough)
+
+- **Donut hover center-text overflow** on long category labels ("Graphics & Design", "System Utilities", "AI & ML"). Wraps or overflows the inner ring on narrow windows. ~30min — auto-shrink / ellipsis / multi-line / abbreviated labels TBD.
+- **`weight::*` dead-code warning** in `local_search` — false-positive analyzer quirk on closures inside async fn. Currently silenced with `#[allow(dead_code)]`; revisit when the analyzer improves.
+- **Stale "Paranoid mode is on" toast** wording still slips through `brewErrorMessage(e)` for `paranoid_mode_blocked` — central default missed during the Phase 15 rename sweep. One-line fix in `src/lib/types.ts`.
+- **localStorage flag gating eager `loadStatus()` in TitlebarControls** — preserves v0.2.1's "zero Keychain prompt for non-signed-in users" promise. Currently re-introduces a prompt on every fresh-signature launch. ~15min.
+- **`cancelSignin` timer leak** — `setTimeout(cancelSignin, 1500)` in `signIn()` doesn't get cleared if the user clicks Cancel before 1500ms. Rare edge case; ~10min.
+- **Startup placeholder-pubkey guard** — panic-in-release-build if `UPDATER_PUBKEY.contains("PLACEHOLDER")`. Catches the next maintainer skipping the pubkey-replacement step. ~5min.
+- **Persist `last_checked_at` to disk** so the auto-updater 24h floor honours typical morning-open/evening-close usage. Currently in-memory only; effectively never auto-fires across launches. ~30min.
+- **Activity → data-dir migration** (the bigger persistence cleanup). Move from localStorage (WebKit-scoped, dev/prod split, ~5-10MB quota) to `~/Library/Application Support/brew-browser/activity.json` via two new Tauri commands. ~45min.
+
+### v0.4.0 candidates (bigger features)
+
+- **`installedAt` on Package + Last-Updated sort** (1-2h, on deferred list since Phase 9).
+- **Octocat chip tooltip differentiation** — currently `notifications`-missing and `public_repo`-missing both render amber with the same tooltip. ~30min.
+- **Tier B enrichment run** (~$15 Anthropic API). Unlocks "Why install this?", "Similar packages", "Tags" sections in PackageDetail.
+- **Recipes feature** (Phase 10, needs Tier B). Curated 3-5 package combos by use case.
+- **`brew tap msitarzewski/brew-browser`** for one-line `brew install --cask brew-browser`. Post-launch convenience.
+- **Tahoe Liquid Glass via Swift FFI** — Tauri 2 doesn't expose this directly. Polish.
+
+---
+
+## Historical state (pre-v0.3.1)
 
 - **v0.3.0** is live. Signed + notarized + stapled `.dmg` AND signed `.app.tar.gz` (the auto-updater artifact) both on the GH release: <https://github.com/msitarzewski/brew-browser/releases/tag/v0.3.0>.
 - **Manifest live** at <https://brew-browser.zerologic.com/updater.json>. Served by Caddy on umbp. Auto-updater path validated end-to-end with real minisign keypair.
