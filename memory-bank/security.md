@@ -669,65 +669,77 @@ Every other outbound path in the projectbrief enumeration targets a third party 
 
 The endpoint serves static JSON from Caddy on `brew-browser.zerologic.com`. The deploy lives at `/home/michael/Sites/brew-trending/` with the collector (`tools/trending-collector/`) regenerating the JSON tree nightly via cron.
 
-**Caddyfile block** for the `/trending-history/*` subpath on the existing `brew-browser.zerologic.com` vhost:
+**Caddyfile block** — the complete `brew-browser.zerologic.com` site block as deployed in v0.4.0. The new pieces are the `handle_path /trending-history/*` handler and the site-wide IP-redacted `log` block at the bottom; everything else is the pre-existing block that served the updater manifest. Reproducing the whole thing here so the audit trail shows the exact deployed state.
 
 ```caddy
 brew-browser.zerologic.com {
-    # ... existing updater manifest block ...
+    root * /home/michael/Sites/brew-browser
+    file_server
+    encode gzip zstd
 
+    # Long cache for static assets (icons, CSS).
+    @static path *.svg *.css
+    header @static Cache-Control "public, max-age=86400"
+
+    # Standard security headers — apply to every response from this
+    # vhost including the trending-history endpoint.
+    header {
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "no-referrer-when-downgrade"
+        Permissions-Policy "interest-cohort=()"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    }
+
+    # v0.4.0 — Enhanced Trending History endpoint. `handle_path`
+    # strips the `/trending-history` prefix and serves a separate
+    # filesystem root populated by `tools/trending-collector/`.
     handle_path /trending-history/* {
         root * /home/michael/Sites/brew-trending
         file_server
 
-        # GET only. No PUT/POST/DELETE — the endpoint is read-only by
-        # design, but be explicit so a future Caddy default change
-        # can't surprise us.
+        # GET only. The endpoint is read-only by design — be explicit
+        # so a future Caddy default change can't surprise us.
         @writes method POST PUT DELETE PATCH
         respond @writes 405
 
-        # No cookies set, no auth needed. Explicit cache-control so
-        # CDN intermediaries / browsers don't re-fetch on every page
-        # load when the user is browsing many package details.
+        # No cookies, explicit cache-control, strip the Server header
+        # for one less fingerprinting surface.
         header {
             Cache-Control "public, max-age=21600"
-            X-Content-Type-Options "nosniff"
             -Set-Cookie
             -Server
         }
+    }
 
-        # Privacy: redact every IP-carrying field at the access-log
-        # layer via Caddy's `delete` log filter. Without this, the
-        # default JSON log would store remote_ip + client_ip +
-        # X-Forwarded-For on every GET — the trust statement in README
-        # would be a lie.
-        #
-        # `delete` removes the field entirely; the field simply does
-        # not exist in the JSON log line. Easier privacy claim to
-        # audit than "we replaced it with 0.0.0.0" — you can grep the
-        # log file for the key name and find nothing.
-        log {
-            output file /var/log/caddy/brew-trending.log {
-                roll_size 10MiB
-                roll_keep 5
-            }
-            format filter {
-                wrap json
-                fields {
-                    request>remote_ip delete
-                    request>remote_port delete
-                    request>client_ip delete
-                    request>headers>X-Forwarded-For delete
-                    request>headers>X-Real-Ip delete
-                }
+    # IP-redacted access log for the WHOLE brew-browser.zerologic.com
+    # vhost. Site-wide rather than path-scoped because Caddy 2.x
+    # doesn't allow `log` inside `handle_path` — and applying the
+    # filter to the whole vhost is strictly better posture (the
+    # updater-manifest path also gets IP-stripped logs now).
+    #
+    # `delete` removes each named field entirely from the JSON log
+    # line. The privacy claim is easy to audit: a `grep -c remote_ip
+    # /var/log/caddy/brew-browser.log` returns 0.
+    log {
+        output file /var/log/caddy/brew-browser.log {
+            roll_size 10MiB
+            roll_keep 5
+        }
+        format filter {
+            wrap json
+            fields {
+                request>remote_ip delete
+                request>remote_port delete
+                request>client_ip delete
+                request>headers>X-Forwarded-For delete
+                request>headers>X-Real-Ip delete
             }
         }
-
-        # CORS not needed — the app makes calls from the Tauri shell,
-        # which is same-origin to the embedded webview. No browser
-        # context will ever hit this.
     }
 }
 ```
+
+**Iteration history:** the §16.2 block went through three syntactic corrections during the v0.4.0 deploy — `format json { fields {...} }` (wrong: json encoder has no fields directive), `format filter { wrap json; fields { ... } }` inside `handle_path` (wrong: `log` can't be nested in `handle_path` in Caddy 2.x), and finally site-level `log { format filter { ... } }` (correct, deployed). Pinned here so a future audit re-runs validation against what's actually on disk, not what an earlier draft claimed.
 
 **What this guarantees** (and what the user can verify):
 
