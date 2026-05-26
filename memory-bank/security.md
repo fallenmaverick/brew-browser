@@ -677,28 +677,12 @@ brew-browser.zerologic.com {
 
     handle_path /trending-history/* {
         root * /home/michael/Sites/brew-trending
-        file_server browse
-
-        # Privacy: redact client IP at the access-log layer. Without
-        # this, Caddy's default JSON log would store remote_ip on
-        # every GET — the trust statement in README would be a lie.
-        log {
-            output file /var/log/caddy/brew-trending.log {
-                roll_size 10MiB
-                roll_keep 5
-            }
-            format json {
-                fields {
-                    request>remote_ip "0.0.0.0"
-                    request>remote_port "0"
-                }
-            }
-        }
+        file_server
 
         # GET only. No PUT/POST/DELETE — the endpoint is read-only by
         # design, but be explicit so a future Caddy default change
         # can't surprise us.
-        @writes method PUT POST DELETE PATCH
+        @writes method POST PUT DELETE PATCH
         respond @writes 405
 
         # No cookies set, no auth needed. Explicit cache-control so
@@ -711,6 +695,32 @@ brew-browser.zerologic.com {
             -Server
         }
 
+        # Privacy: redact every IP-carrying field at the access-log
+        # layer via Caddy's `delete` log filter. Without this, the
+        # default JSON log would store remote_ip + client_ip +
+        # X-Forwarded-For on every GET — the trust statement in README
+        # would be a lie.
+        #
+        # `delete` removes the field entirely; the field simply does
+        # not exist in the JSON log line. Easier privacy claim to
+        # audit than "we replaced it with 0.0.0.0" — you can grep the
+        # log file for the key name and find nothing.
+        log {
+            output file /var/log/caddy/brew-trending.log {
+                roll_size 10MiB
+                roll_keep 5
+            }
+            format json {
+                fields {
+                    request>remote_ip delete
+                    request>remote_port delete
+                    request>client_ip delete
+                    request>headers>X-Forwarded-For delete
+                    request>headers>X-Real-Ip delete
+                }
+            }
+        }
+
         # CORS not needed — the app makes calls from the Tauri shell,
         # which is same-origin to the embedded webview. No browser
         # context will ever hit this.
@@ -720,7 +730,7 @@ brew-browser.zerologic.com {
 
 **What this guarantees** (and what the user can verify):
 
-1. **No IP retention.** Caddy's `log.format.fields.request>remote_ip` overrides force every log line to record `0.0.0.0` as the source. The original IP is never written to disk. Same for `remote_port`.
+1. **No IP retention.** Caddy's log encoder runs the `delete` filter on every IP-carrying field (`request>remote_ip`, `request>client_ip`, `request>remote_port`, plus the `X-Forwarded-For` and `X-Real-IP` headers). The fields don't exist in the log line at all — a `grep -c remote_ip /var/log/caddy/brew-trending.log` returns 0.
 2. **No cookies.** No `set-cookie` directive in the block and any incidental cookie a future plugin might add is stripped via `-Set-Cookie`.
 3. **GET only.** A `respond @writes 405` catches any write attempt.
 4. **No fingerprinting.** No JavaScript runs on the endpoint (it's static JSON). No referer logging, no ETag tracking, no per-request unique tokens.
