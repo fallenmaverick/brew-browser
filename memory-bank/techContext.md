@@ -93,6 +93,25 @@ Serialize concurrent `brew` invocations using a `tokio::sync::Mutex<()>` in Taur
 
 **Casks not supported:** `brew vulns` is formula-only (casks ship vendor binaries with their own update channels; OSV's source-URL approach doesn't map). Cask rows render the same UI shells but the Security card honestly says "Cask coverage isn't supported."
 
+## Cross-platform (Linux) — newly supported on `feat/linux-support`
+
+macOS remains the primary target. Linux build support was added on the `feat/linux-support` branch. The macOS side is regression-verified (586 Rust tests pass, frontend check clean, Vite build clean); the Linux binary is produced **only in CI** — it cannot be cross-compiled from macOS because webkit2gtk is Linux-native — and is **unproven until a real-Linux smoke test runs**.
+
+**Keyring per-target feature split.** Tauri's "one codebase, add a target" model means the GitHub-token store needed no API change — the `keyring` crate exposes a unified `keyring::Entry` API (`src-tauri/src/github/auth.rs` is byte-identical, zero changes). Only `src-tauri/Cargo.toml` splits the feature set per target:
+
+- macOS (`Cargo.toml:87-89`) — `keyring = { features = ["apple-native"] }` (Security framework / Keychain).
+- Linux (`Cargo.toml:95-96`) — `keyring = { features = ["sync-secret-service", "crypto-rust"] }`. `sync-secret-service` is the persistent Secret Service backend (gnome-keyring / KWallet via D-Bus, survives reboot — NOT the session-scoped kernel keyutils). `crypto-rust` is pure-Rust AES, so there is **no system OpenSSL build dependency** on CI.
+
+**Runtime caveat:** Linux needs a Secret Service daemon running for GitHub sign-in. Without one (headless box, minimal WM), sign-in fails via the existing `BrewError::KeychainUnavailable` path (`error.rs:104`) — the rest of the app is unaffected.
+
+**Linuxbrew path detection.** `src-tauri/src/brew/paths.rs:31-37` checks the shared Linuxbrew prefix `/home/linuxbrew/.linuxbrew/bin/brew` and the per-user `~/.linuxbrew/bin/brew` in addition to the macOS prefixes. Disk-usage and the Finder-reveal security gate derive their paths from `brew --prefix` / `brew --cache` (not a hardcoded `/opt/homebrew`), so the Linux prefix works automatically.
+
+**Platform-gated OS integrations.** `open_in_finder` keeps its IPC name but cfg-gates its implementation: macOS `open -R <path>` (reveal-and-select); Linux `xdg-open <parent-dir>` (no portable reveal-and-select verb, so we open the containing directory) — `disk_usage.rs:240-271`. `cask_icon` cfg-gates the macOS `.app`/`sips`/`defaults` extraction pipeline (`cask_icon.rs`, every extraction fn is `#[cfg(target_os = "macos")]`); Linux short-circuits to `Ok(None)` because Linux casks don't produce `.app` bundles. **Casks degrade gracefully** — they still list, install, and get homepage-favicon icons on Linux; they are not removed.
+
+**Build floor: webkit2gtk-4.1 / Ubuntu 22.04.** CI pins `ubuntu-22.04` (NOT `ubuntu-latest`) so the glibc floor stays fixed — binaries built there run on 22.04+ and newer distros; `ubuntu-latest` would silently drift the floor forward and break older targets. Tauri 2 targets the webkit2gtk-4.1 ABI.
+
+**CI is the canonical build recipe.** `.github/workflows/linux-build.yml` (on `ubuntu-22.04`) is the single source of truth for the apt dependency list and the build steps. It produces `.deb` / `.rpm` / `.AppImage` and triggers on push to `feat/linux-support`, on `v*` tags, and via manual dispatch. `tauri.conf.json` gained a `bundle.linux` block (deb runtime `depends` + appimage config; `tauri.conf.json:55-66`); the macOS bundle config is untouched. `tools/release/publish-manifest.sh` emits an additional `linux-x86_64` updater platform block when the AppImage + its `.sig` are present, and is byte-identical on the macOS-only path when they are not. Linux artifacts ship **unsigned** for v0 (AppImage unsigned by convention; deb/rpm GPG signing is a documented future step).
+
 ## Known sharp edges
 
 - **Tauri sandbox vs. shell execution** — explicit allowlist in `tauri.conf.json` is required to permit any subprocess

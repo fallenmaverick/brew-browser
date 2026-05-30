@@ -811,3 +811,42 @@ Regression-pinned by `vulns::client::tests::raw_scan_result_parses_real_brew_vul
 
 - Open the PR for `feat/v0.5.0-vulnerability-scanning` → review → merge.
 - Cut the v0.5.0 release via the standard pipeline (same as v0.4.0).
+
+---
+
+## 2026-05-28 (Linux build support — branch `feat/linux-support`)
+
+v0.5.0 is shipped and released. This branch adds **Linux build support** to the existing macOS app, targeting a future v0.6.0-track release. macOS is and stays the primary target. The macOS side is **regression-verified**; the Linux binary builds **only in CI** and is **UNPROVEN** until a real-Linux smoke test runs.
+
+### What landed (8 changes)
+
+| # | Change | Where |
+|---|---|---|
+| 1 | Keyring dep split per target — macOS `apple-native`, Linux `sync-secret-service` + `crypto-rust` (persistent Secret Service, pure-Rust crypto, no system OpenSSL on CI). `github/auth.rs` unchanged (unified `keyring::Entry`). | `src-tauri/Cargo.toml:87-96` |
+| 2 | Linuxbrew path detection — `/home/linuxbrew/.linuxbrew/bin/brew` + `~/.linuxbrew/bin/brew`. | `src-tauri/src/brew/paths.rs:31-37` |
+| 3 | `open_in_finder` cfg-gated — macOS `open -R`, Linux `xdg-open` on parent dir. Security gate + disk paths from `brew --prefix`/`--cache`. | `src-tauri/src/commands/disk_usage.rs:240-271` |
+| 4 | `cask_icon` cfg-gated — macOS `.app`/`sips`/`defaults`; Linux `Ok(None)`. Casks still list/install/get favicon icons. | `src-tauri/src/commands/cask_icon.rs` |
+| 5 | CI workflow on `ubuntu-22.04` (webkit2gtk-4.1, oldest-glibc floor) → `.deb`/`.rpm`/`.AppImage`. Triggers: branch push, `v*` tags, manual dispatch. Canonical apt recipe. | `.github/workflows/linux-build.yml` |
+| 6 | `bundle.linux` block (deb runtime `depends` + appimage config); macOS bundle untouched. | `src-tauri/tauri.conf.json:55-66` |
+| 7 | Emit `linux-x86_64` updater platform block when AppImage + `.sig` present; macOS-only path byte-identical when not. | `tools/release/publish-manifest.sh` |
+| 8 | Platform-aware frontend copy via `platform.ts` (navigator.userAgent, zero deps): "Show in file manager" / "system keyring" on Linux. | `src/lib/util/platform.ts`, `Dashboard.svelte`, `SettingsSectionGitHub.svelte`, `types.ts` |
+
+### Verified (macOS) vs unverified (Linux/CI)
+
+- ✅ **Verified (macOS):** `cargo test` **586 passed / 0 failed**; `npm run check` 0 errors; `npm run build` clean Vite build. The per-target cfg-gating compiles on macOS (keyring selects `apple-native`). macOS bundle/signing/updater path byte-identical to v0.5.0 — no regression.
+- ⚠️ **Unverified (Linux/CI):** the Linux binary has **never run on a real Linux machine** (webkit2gtk can't cross-compile from macOS; only CI produces it). First CI run not yet confirmed green. No Linux runtime path exercised end-to-end.
+
+The accurate claim is **"Linux build support added; macOS regression-verified; Linux binary builds in CI but is unproven until a real-Linux smoke test"** — same honesty posture as the v0.5.0 cask-coverage gap, and consistent with the 2026-05-27 smoke-test-discipline ADR (a compile proves the binary builds, not that the feature works).
+
+### Before a Linux release (hard gate)
+
+1. CI green — `linux-build.yml` produces `.deb`/`.rpm`/`.AppImage`.
+2. Real-Linux smoke test (Ubuntu 22.04+): brew detection at the Linuxbrew prefix · GitHub sign-in with a Secret Service daemon · "Show in file manager" (`xdg-open`) · formula install/upgrade/uninstall round-trip · the vuln scan if `brew vulns` installs on Linux.
+
+Full detail: `tasks/2026-05/21-linux-support.md`. ADR: `decisions.md` (2026-05-28).
+
+### What's left
+
+- Confirm the first CI run is green.
+- Run the real-Linux smoke test before advertising any Linux download.
+- Open the PR for `feat/linux-support` → review → merge (merging build support is fine; a Linux release waits on the smoke test).

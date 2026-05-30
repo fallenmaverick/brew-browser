@@ -5,6 +5,8 @@
  * `invoke()` returns for each Tauri command.
  */
 
+import { keyringNameCapitalized } from "$lib/util/platform";
+
 // =========================================================
 // 2.1 Common enums
 // =========================================================
@@ -879,7 +881,7 @@ export function brewErrorMessage(e: BrewErrorPayload): string {
       return `GitHub API rate limit reached. Resets at ${reset}. Sign in to lift the limit.`;
     }
     case "keychain_unavailable":
-      return `macOS Keychain unavailable: ${e.message}`;
+      return `${keyringNameCapitalized} unavailable: ${e.message}`;
     case "auth_required":
       return "Sign in to GitHub to use this feature.";
     case "scope_required":

@@ -33,6 +33,7 @@
   import { resolveCategoryIcon } from "$lib/util/categoryIcon";
   import { brewErrorMessage, isBrewError, type DiskUsageReport } from "$lib/types";
   import { reportableToastError } from "$lib/util/reportIssue";
+  import { isMac } from "$lib/util/platform";
 
   let disk = $state<DiskUsageReport | null>(null);
   let diskLoading = $state(false);
@@ -58,7 +59,7 @@
     try {
       await openInFinder(path);
     } catch (e) {
-      reportableToastError("Couldn't reveal in Finder", e);
+      reportableToastError(isMac ? "Couldn't reveal in Finder" : "Couldn't open in file manager", e);
     }
   }
 
@@ -803,8 +804,8 @@
                     class="s-open"
                     onclick={() => reveal(e.path)}
                     disabled={!e.exists}
-                    title={e.exists ? `Reveal ${e.path} in Finder` : "Path doesn't exist"}
-                    aria-label={`Reveal ${e.label} in Finder`}
+                    title={e.exists ? (isMac ? `Reveal ${e.path} in Finder` : `Show ${e.path} in file manager`) : "Path doesn't exist"}
+                    aria-label={isMac ? `Reveal ${e.label} in Finder` : `Show ${e.label} in file manager`}
                   >
                     <FolderOpen size={14} />
                   </button>

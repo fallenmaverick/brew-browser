@@ -92,6 +92,16 @@ ARTIFACT_RELEASE_NAME="brew-browser_${VERSION}_aarch64.app.tar.gz"
 DIST_DIR="$REPO_ROOT/dist"
 MANIFEST_PATH="$DIST_DIR/updater.json"
 
+# Linux updater artifact. Tauri's Linux updater install path uses the
+# .AppImage (NOT the .deb/.rpm), and signs it with the same
+# TAURI_SIGNING_PRIVATE_KEY (minisign is cross-platform). The bundler
+# stamps the AppImage with the version + arch, so glob for it rather
+# than hard-coding the name. This block is OPTIONAL: when running on a
+# Mac that only built the .app.tar.gz, no AppImage exists and we emit a
+# macOS-only manifest exactly as before.
+LINUX_ARTIFACT_PATH="$(ls -t "$REPO_ROOT"/src-tauri/target/release/bundle/appimage/*.AppImage 2>/dev/null | head -1 || true)"
+LINUX_ARTIFACT_RELEASE_NAME="brew-browser_${VERSION}_amd64.AppImage"
+
 # ---------- Preflight ----------
 
 if [[ ! -f "$ARTIFACT_PATH" ]]; then
@@ -136,6 +146,50 @@ SIGNATURE_JSON="${SIGNATURE_RAW%$'\n'}"
 SIGNATURE_JSON=$(perl -pe 's/\n/\\n/g' <<< "$SIGNATURE_JSON")
 SIGNATURE_JSON="${SIGNATURE_JSON%\\n}"
 
+# ---------- Linux platform block (conditional) ----------
+
+# Build the linux-x86_64 platform entry only when the AppImage + its
+# .sig are both present. Absent (Mac-only build) → LINUX_BLOCK stays
+# empty and the manifest is macOS-only, byte-for-byte as before.
+LINUX_BLOCK=""
+if [[ -n "$LINUX_ARTIFACT_PATH" && -f "$LINUX_ARTIFACT_PATH" ]]; then
+    LINUX_SIGNATURE_FILE="${LINUX_ARTIFACT_PATH}.sig"
+    if [[ ! -f "$LINUX_SIGNATURE_FILE" ]]; then
+        echo "error: found AppImage but its signature is missing:" >&2
+        echo "  $LINUX_SIGNATURE_FILE" >&2
+        echo "  Tauri produces this when TAURI_SIGNING_PRIVATE_KEY[_PATH] is set" >&2
+        echo "  during the Linux 'npm run tauri build'. Re-run with signing env." >&2
+        exit 2
+    fi
+
+    echo "info: computing SHA-256 of $(basename "$LINUX_ARTIFACT_PATH")..." >&2
+    LINUX_SHA256=$(shasum -a 256 "$LINUX_ARTIFACT_PATH" | awk '{print $1}')
+    echo "info: linux sha256 = $LINUX_SHA256" >&2
+
+    # Same single-line Tauri .sig format + defensive newline-escaping as
+    # the macOS signature above.
+    LINUX_SIGNATURE_RAW=$(cat "$LINUX_SIGNATURE_FILE")
+    LINUX_SIGNATURE_JSON="${LINUX_SIGNATURE_RAW%$'\n'}"
+    LINUX_SIGNATURE_JSON=$(perl -pe 's/\n/\\n/g' <<< "$LINUX_SIGNATURE_JSON")
+    LINUX_SIGNATURE_JSON="${LINUX_SIGNATURE_JSON%\\n}"
+
+    LINUX_URL="https://github.com/msitarzewski/brew-browser/releases/download/v${VERSION}/${LINUX_ARTIFACT_RELEASE_NAME}"
+
+    # Leading comma + newline so it appends cleanly after the
+    # darwin-aarch64 entry inside the "platforms" object.
+    LINUX_BLOCK=$(cat <<EOF
+,
+    "linux-x86_64": {
+      "signature": "${LINUX_SIGNATURE_JSON}",
+      "url": "${LINUX_URL}",
+      "sha256": "${LINUX_SHA256}"
+    }
+EOF
+)
+else
+    echo "info: no Linux AppImage found — emitting macOS-only manifest." >&2
+fi
+
 # ---------- Emit manifest ----------
 
 mkdir -p "$DIST_DIR"
@@ -157,7 +211,7 @@ cat > "$MANIFEST_PATH" <<EOF
       "signature": "${SIGNATURE_JSON}",
       "url": "${URL}",
       "sha256": "${SHA256}"
-    }
+    }${LINUX_BLOCK}
   }
 }
 EOF

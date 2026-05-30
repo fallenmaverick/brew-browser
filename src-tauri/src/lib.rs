@@ -63,7 +63,7 @@ pub fn run() {
         )
         .try_init();
 
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         // Phase 15 — register the updater plugin. The endpoint URL and
@@ -73,9 +73,22 @@ pub fn run() {
         // through `state.require_network("update_check")` first so
         // Offline Mode kills the path even though the plugin itself
         // would otherwise try the manifest endpoint.
-        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_updater::Builder::new().build());
+
+    // The native menu is macOS-idiomatic: on macOS it populates the
+    // global menu bar at the top of the screen. On Linux/GTK there is
+    // no global menu bar, so Tauri renders it as an in-window GTK
+    // MenuBar strip — redundant (every action is reachable from the
+    // in-app UI) and it clashes with the transparent-window config
+    // (the strip paints see-through). Gate it to macOS so Linux gets a
+    // clean chromeless window. Discovered during the v0.6.0 Linux
+    // bring-up.
+    #[cfg(target_os = "macos")]
+    let builder = builder
         .menu(build_app_menu)
-        .on_menu_event(handle_menu_event)
+        .on_menu_event(handle_menu_event);
+
+    builder
         .setup(|app| {
             state::initialize(app)?;
             // Phase 15 — spawn the auto-check scheduler. The task

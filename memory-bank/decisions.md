@@ -320,3 +320,35 @@ The v0.4.0 outbound enumeration is at ten paths (path j is the most recent — o
 - "Mock the subprocess with a recorded fixture." Useful, but only after the fixture has been captured live at least once. The mock-first failure mode is "mock matches expectations; reality differs."
 
 **Outcome:** added the §"Smoke test cycle" block to `tasks/2026-05/20-v0.5.0-vulnerability-scanning.md` documenting the five bugs + their fixes + the captured-fixture regression pin. Future subprocess-integration tasks (e.g. if we ever wrap `brew livecheck`, `brew bundle-doctor`, or any other third-party brew subcommand) should reference this ADR before committing to a "defensive parse" without a captured fixture.
+
+---
+
+## 2026-05-28: Linux support via Tauri's native cross-compilation (v0.6.0-track)
+
+**Status:** Build support added on branch `feat/linux-support`. macOS regression-verified (586 Rust tests pass, frontend check clean, Vite build clean). The Linux binary builds in CI but is **unproven** until a real-Linux smoke test runs (see "Before a Linux release" below and the reasoning carried over from the 2026-05-27 smoke-test-discipline ADR).
+
+**Context:** brew-browser shipped macOS-only through v0.5.0. Homebrew also runs on Linux (Linuxbrew, prefix `/home/linuxbrew/.linuxbrew`). The question was how much it would cost to support Linux — and whether the answer changed the "macOS-first" posture. It turned out to be cheap, because that cheapness is exactly Tauri's whole value proposition: one codebase, add a target.
+
+**Decision:** add Linux as a supported build target. Keep macOS as the primary target. Build Linux artifacts (`.deb` / `.rpm` / `.AppImage`) in CI on `ubuntu-22.04`. Ship them **unsigned for v0**. Do not claim Linux "works" until a real-Linux smoke test passes.
+
+**Why it was cheap (the eight changes):**
+
+- **No frontend logic changes beyond label copy.** The WebView and the IPC surface are platform-agnostic. A new `src/lib/util/platform.ts` (navigator.userAgent-based `isMac` / `isLinux`, zero new deps) swaps "Reveal in Finder" → "Show in file manager" and "macOS Keychain" → "system keyring" in user-facing copy. That's it.
+- **Vibrancy was already cfg-gated.** The macOS `NSVisualEffectView` setup lives behind a macOS cfg from the original v0.1.0 work, so the Linux build doesn't try to apply it. Nothing to do.
+- **`cask_icon` used no macOS-only crates.** The `.app`/`sips`/`defaults` extraction is shell-outs to system binaries, already cfg-gated `#[cfg(target_os = "macos")]`. On Linux it compiles free and short-circuits to `Ok(None)`.
+- **Paths were already derived from `brew --prefix` / `brew --cache`**, not hardcoded `/opt/homebrew`. The Finder-reveal security gate and disk-usage paths pick up the Linuxbrew prefix automatically once `brew/paths.rs` knows where to find `brew` on Linux.
+
+**The keyring feature decision + rationale.** The only dependency change. `keyring::Entry` is a unified API across backends, so `github/auth.rs` needed **zero changes** — the split is entirely in `Cargo.toml`'s per-target dependency tables:
+
+- macOS → `apple-native` (Security framework / Keychain), unchanged.
+- Linux → `sync-secret-service` + `crypto-rust`. `sync-secret-service` gives **persistent** token storage via the Secret Service D-Bus API (gnome-keyring / KWallet, survives reboot) rather than the session-scoped kernel keyutils. `crypto-rust` is pure-Rust AES so CI has **no system OpenSSL build dependency**. Runtime caveat: Linux needs a Secret Service daemon running for GitHub sign-in; without one, sign-in fails via the existing `BrewError::KeychainUnavailable` path and nothing else breaks.
+
+**Cask graceful-degradation call (not ripped out).** It was tempting to disable casks on Linux entirely since the macOS `.app`-icon pipeline doesn't apply. Rejected — Linux casks still **list, install, and get homepage-favicon icons**; only the `.app`-bundle icon extraction is macOS-only. Same posture as the cask-coverage-gap honesty in v0.5.0 (render the row, tell the truth in the label, don't fake state). Linux `cask_icon` short-circuits to `Ok(None)` and the homepage-favicon cascade still runs.
+
+**Unsigned Linux artifacts for v0.** AppImage ships unsigned by convention. `.deb` / `.rpm` GPG signing is a documented future step (slots in after the build step: sign with a repo GPG key, publish to an apt/yum repo). There is no notarization equivalent to satisfy on Linux. Decided to ship unsigned for v0 rather than block Linux support on a signing pipeline.
+
+**CI is the build host (no local cross-compile).** webkit2gtk is Linux-native; it cannot be cross-compiled from macOS. So the Linux binary is produced by `.github/workflows/linux-build.yml` on `ubuntu-22.04` — pinned, NOT `ubuntu-latest`, so the glibc floor stays fixed (binaries run on 22.04+; `ubuntu-latest` would silently raise the floor). That workflow is also the canonical apt-dependency recipe; the README points at it rather than duplicating the list.
+
+**Why "unproven until smoke test" is load-bearing here.** Per the 2026-05-27 ADR "Smoke-test discipline for subprocess-integration features": unit tests validate *internal* correctness; only a live run on the real platform catches *integration* assumptions. Linux support touches subprocess semantics (`xdg-open` vs `open -R`), the Secret Service daemon dependency, and the Linuxbrew prefix — none of which the macOS test suite or the CI compile exercises end-to-end. CI proving the binary *builds* is necessary but not sufficient. The honest claim is "Linux build support added; macOS regression-verified; Linux binary builds in CI but is unproven until a real-Linux smoke test." A real-Linux smoke test is a hard gate before any Linux release.
+
+**Outcome:** documented in `techContext.md` ("Cross-platform (Linux)" section), `README.md` (Install + Build-from-source + Architecture), `progress.md` (Linux-support section), and `tasks/2026-05/21-linux-support.md` (full file:line detail + the before-a-Linux-release checklist). Eight changes total: keyring cfg-split, Linuxbrew path, `open_in_finder` cfg-gate, `cask_icon` cfg-gate, CI workflow, `tauri.conf.json` `bundle.linux`, `publish-manifest.sh` Linux platform block, and the frontend `platform.ts` label module.
