@@ -13,10 +13,8 @@ cd "$HERE"
 echo "==> swift build ($CONFIG)"
 swift build -c "$CONFIG"
 
-BIN="$(swift build -c "$CONFIG" --show-bin-path)/BrewBrowser"
-APP="$HERE/BrewBrowser.app"
-
 BINDIR="$(swift build -c "$CONFIG" --show-bin-path)"
+BIN="$BINDIR/BrewBrowser"
 APP="$HERE/BrewBrowser.app"
 
 echo "==> assembling $APP"
@@ -24,6 +22,13 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
 mkdir -p "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/BrewBrowser"
+
+# App icon — the real brew-browser icon (1024px .icns, shared with the Tauri
+# app). Gives the .app a proper Dock/Finder/⌘-Tab icon instead of the generic
+# placeholder. Referenced by CFBundleIconFile below.
+if [ -f "$HERE/AppIcon.icns" ]; then
+  cp "$HERE/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
+fi
 
 # SPM emits resource bundles (e.g. BrewBrowser_BrewBrowser.bundle) next to the
 # binary. Bundle.module resolves them relative to the executable, so copy any
@@ -45,6 +50,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>0.1.0</string>
     <key>CFBundleVersion</key><string>1</string>
+    <key>CFBundleIconFile</key><string>AppIcon</string>
+    <key>CFBundleIconName</key><string>AppIcon</string>
     <key>LSMinimumSystemVersion</key><string>26.0</string>
     <key>NSHighResolutionCapable</key><true/>
     <key>NSPrincipalClass</key><string>NSApplication</string>

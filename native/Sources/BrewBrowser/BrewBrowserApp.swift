@@ -41,5 +41,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.setActivationPolicy(.regular)
         }
         NSApp.activate(ignoringOtherApps: true)
+        // Real Dock/⌘-Tab icon, loaded from BrewBrowserKit's bundle — works for
+        // the bare binary (Xcode ⌘R) too, not just the build-app.sh .app.
+        applyDockIcon()
     }
 }

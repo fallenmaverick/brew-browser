@@ -37,7 +37,11 @@ let package = Package(
             path: "Sources/BrewBrowserKit",
             resources: [
                 .copy("Resources/categories.json"),
-                .copy("Resources/enrichment.json")
+                .copy("Resources/enrichment.json"),
+                // App icon, loaded at runtime via Bundle.module to set the Dock
+                // icon. Works even for the bare `swift build` / Xcode ⌘R binary
+                // (which has no .app bundle Info.plist icon).
+                .copy("Resources/AppIcon.icns")
             ]
         )
     ]

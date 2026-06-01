@@ -1,4 +1,16 @@
 import SwiftUI
+import AppKit
+
+/// Sets the Dock / ⌘-Tab icon at runtime from the bundled `AppIcon.icns`.
+/// Needed because the bare `swift build` / Xcode ⌘R binary has no `.app`
+/// Info.plist icon — only the `build-app.sh` bundle does. Loading from
+/// `Bundle.module` makes the real icon show in BOTH run paths. Call once at
+/// launch (from the executable's AppDelegate).
+public func applyDockIcon() {
+    guard let url = Bundle.module.url(forResource: "AppIcon", withExtension: "icns"),
+          let image = NSImage(contentsOf: url) else { return }
+    NSApplication.shared.applicationIconImage = image
+}
 
 /// Root chrome — stock `NavigationSplitView`, no overrides. Apple renders the
 /// sidebar, the unified title bar, the toolbar, and all materials. We don't
