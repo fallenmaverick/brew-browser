@@ -933,11 +933,15 @@ final class AppModel {
         }
 
         let ok = exit == 0
+        let canceled = exit == 130 || exit == 143
         if let idx = jobs.firstIndex(where: { $0.id == jobId }) {
             // exit 130/143 = SIGINT/SIGTERM → treat as canceled.
-            jobs[idx].status = ok ? .succeeded : (exit == 130 || exit == 143 ? .canceled : .failed)
+            jobs[idx].status = ok ? .succeeded : (canceled ? .canceled : .failed)
             jobs[idx].exitCode = exit
         }
+        // Background completion → macOS notification (opt-in; foreground uses
+        // the Activity drawer). No-op unless enabled + app not frontmost.
+        NotificationService.notifyTaskFinished(label: label, succeeded: ok, canceled: canceled)
         persistJobs()
         await refresh()
         return ok

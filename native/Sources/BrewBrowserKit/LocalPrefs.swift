@@ -76,6 +76,7 @@ final class LocalPrefs {
         static let activityMaxJobs = "brew-browser.activity.max-jobs"
         static let activityMaxLines = "brew-browser.activity.max-lines"
         static let sidebarCollapsed = "brew-browser.sidebar-collapsed"
+        static let notifyOnTaskCompletion = "brew-browser.notify-on-task-completion"
     }
 
     // MARK: - Defaults & clamps (from ui.svelte.ts)
@@ -84,6 +85,9 @@ final class LocalPrefs {
     private static let defaultLandingSection: LandingSection = .dashboard
     private static let defaultConfirmDestructive = true
     private static let defaultSidebarCollapsed = false
+    /// Native-only: post a macOS notification when a brew task finishes while
+    /// the app isn't frontmost. Opt-in (off) so we never prompt unprompted.
+    private static let defaultNotifyOnTaskCompletion = false
 
     /// `ACTIVITY_MAX_JOBS_*` — ui.svelte.ts:25-27.
     private static let activityMaxJobsDefault = 50
@@ -136,6 +140,12 @@ final class LocalPrefs {
     /// Whether the sidebar is collapsed to an icon-only rail (ui.svelte.ts:128).
     var sidebarCollapsed: Bool {
         didSet { defaults.set(sidebarCollapsed, forKey: Key.sidebarCollapsed) }
+    }
+
+    /// Native-only: macOS notification when a brew task finishes in the
+    /// background. Off by default. Toggling on requests notification auth.
+    var notifyOnTaskCompletion: Bool {
+        didSet { defaults.set(notifyOnTaskCompletion, forKey: Key.notifyOnTaskCompletion) }
     }
 
     // MARK: - Shared instance
@@ -202,6 +212,13 @@ final class LocalPrefs {
             self.sidebarCollapsed = defaults.bool(forKey: Key.sidebarCollapsed)
         } else {
             self.sidebarCollapsed = Self.defaultSidebarCollapsed
+        }
+
+        // notifyOnTaskCompletion — absent key defaults to false (opt-in).
+        if defaults.object(forKey: Key.notifyOnTaskCompletion) != nil {
+            self.notifyOnTaskCompletion = defaults.bool(forKey: Key.notifyOnTaskCompletion)
+        } else {
+            self.notifyOnTaskCompletion = Self.defaultNotifyOnTaskCompletion
         }
     }
 

@@ -415,6 +415,18 @@ private struct ActivitySettings: View {
                 Text("These limits apply to future job persistence. Existing retained data is not trimmed retroactively.")
                     .font(.caption).foregroundStyle(.secondary)
             }
+
+            SwiftUI.Section {
+                Toggle("Notify when brew tasks finish", isOn: Binding(
+                    get: { prefs.notifyOnTaskCompletion },
+                    set: { on in
+                        prefs.notifyOnTaskCompletion = on
+                        if on { NotificationService.requestAuthorization() }
+                    }
+                ))
+                Text("Posts a macOS notification when an install, upgrade, or other brew task finishes while brew-browser isn't the front app. When it's in front, the Activity drawer shows progress instead. Turning this on asks macOS for notification permission.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
         .padding(20)

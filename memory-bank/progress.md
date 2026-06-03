@@ -1,5 +1,12 @@
 # Progress
 
+## 2026-06-03 — native: live enrichment + task notifications (experiment)
+
+- ✅ Native **live category/description updates** (opt-in) — `EnrichmentLiveService` mirrors `TrendingHistoryService`; overlay on bundled; toggle + disclosure. Parity with Tauri PR #43.
+- ✅ Native **macOS task-completion notifications** (opt-in, background-only) — `NotificationService` + `LocalPrefs.notifyOnTaskCompletion` + Settings toggle; foreground still uses the Activity drawer.
+- ✅ `swift build` clean. See `tasks/2026-06/01-native-live-enrichment-notifications.md` + memory `project-live-enrichment`.
+- Native reverse-parity remaining: **Services panel** (last big one).
+
 ## 2026-05-24 (overnight)
 
 ### Done since last sync
