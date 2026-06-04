@@ -139,7 +139,7 @@
       </div>
       <span class="ago text-muted">{agoLabel}</span>
       <span class="refresh-wrap">
-        <Button size="sm" variant="ghost" onclick={() => trending.load(true)} title="Refresh (⌘R)" ariaLabel="Refresh trending">
+        <Button size="sm" variant="ghost" loading={trending.loading} onclick={() => trending.load(true)} title="Refresh (⌘R)" ariaLabel="Refresh trending">
           {#snippet icon()}<RefreshCw size={14} />{/snippet}
           Refresh
         </Button>

@@ -46,6 +46,7 @@
   import Shield from "@lucide/svelte/icons/shield";
   import { brewInfo, brewInstall, brewUninstall, brewUpgrade, appVersion } from "$lib/api";
   import { safeOpenUrl } from "$lib/util/url";
+  import { bareToken } from "$lib/util/token";
   import { reportableToastError } from "$lib/util/reportIssue";
   import { resolveCategoryIcon } from "$lib/util/categoryIcon";
   import IssueModal from "./IssueModal.svelte";
@@ -124,7 +125,19 @@
     try {
       detail = await brewInfo(name, kind);
     } catch (e) {
-      error = isBrewError(e) ? brewErrorMessage(e) : `Backend not available: ${String(e)}`;
+      // A tap-qualified name (`user/tap/name`) that isn't tapped locally makes
+      // `brew info` fail. Retry the bare name — the core formula the list's
+      // catalog/enrichment data already resolved to.
+      const bare = bareToken(name);
+      if (bare !== name) {
+        try {
+          detail = await brewInfo(bare, kind);
+        } catch {
+          error = isBrewError(e) ? brewErrorMessage(e) : `Backend not available: ${String(e)}`;
+        }
+      } else {
+        error = isBrewError(e) ? brewErrorMessage(e) : `Backend not available: ${String(e)}`;
+      }
     } finally {
       loading = false;
     }

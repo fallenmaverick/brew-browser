@@ -7,6 +7,7 @@ Per-task records for June 2026 work on brew-browser.
 | # | Task | Date | Branch | Release |
 |---|---|---|---|---|
 | 01 | [Tauri←native feature parity (icons, Dashboard charts, keychain one-prompt, velocity threshold)](./01-tauri-native-parity.md) | 2026-06-02 | `tauri-parity` | — |
+| 02 | [Tauri trending tap-token resolution (native parity)](./02-tauri-trending-tap-tokens.md) | 2026-06-04 | `fix/tauri-trending-tap-tokens` | — |
 
 ## Context
 
