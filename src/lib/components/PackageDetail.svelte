@@ -82,6 +82,7 @@
   let depsOpen = $state(false);
   let dependentsOpen = $state(false);
   let confirmUninstall = $state(false);
+  let confirmExternalInstall = $state(false);
 
   // Focus management for the slide-over (A11Y-2 / WCAG 2.4.3).
   // When the panel opens (null → truthy), capture the previously-focused element
@@ -152,14 +153,14 @@
     void enrichment.ensureLive(name);
   }
 
-  async function doInstall() {
+  async function doInstall(force = false) {
     if (!ui.selectedPackage) return;
     const { name, kind } = ui.selectedPackage;
     const tmpId = crypto.randomUUID();
-    activity.startJob(`Installing ${name}`, tmpId, `brew install ${name}`);
+    activity.startJob(`Installing ${name}`, tmpId, `brew install ${name}${force ? " --force" : ""}`);
     ui.openDrawer();
     try {
-      const result = await brewInstall(name, kind, (evt) => {
+      const result = await brewInstall(name, kind, force, (evt) => {
         // first event will carry the real jobId; rewrite if needed
         if (evt.kind === "started" && evt.jobId !== tmpId) {
           const j = activity.jobs.find((j) => j.jobId === tmpId);
@@ -188,6 +189,14 @@
       }
     } catch (e) {
       reportableToastError("Install failed", e);
+    }
+  }
+
+  function handleInstallClick() {
+    if (pkg && pkg.kind === "cask" && !pkg.installedVersion && detail?.existsInApplications) {
+      confirmExternalInstall = true;
+    } else {
+      doInstall(false);
     }
   }
 
@@ -923,7 +932,15 @@
           {/if}
           <div>
             <dt>Installed</dt>
-            <dd>{pkg.installedVersion ?? "Not installed"}</dd>
+            <dd>
+              {#if pkg.installedVersion}
+                {pkg.installedVersion}
+              {:else if detail.existsInApplications}
+                Installed by User
+              {:else}
+                Not installed
+              {/if}
+            </dd>
           </div>
           <div>
             <dt>Latest</dt>
@@ -1466,7 +1483,7 @@
           Uninstall
         </Button>
       {:else if isInstalled}
-        <Button variant="secondary" onclick={doInstall}>
+        <Button variant="secondary" onclick={() => doInstall(false)}>
           {#snippet icon()}<RefreshCcw size={16} />{/snippet}
           Reinstall
         </Button>
@@ -1475,7 +1492,7 @@
           Uninstall
         </Button>
       {:else if pkg}
-        <Button variant="primary" onclick={doInstall}>
+        <Button variant="primary" onclick={handleInstallClick}>
           {#snippet icon()}<Download size={16} />{/snippet}
           Install
         </Button>
@@ -1491,6 +1508,31 @@
     onConfirm={doUninstall}
   >
     <p>This will remove <strong>{ui.selectedPackage.name}</strong> from your system.</p>
+  </DestructiveConfirm>
+
+  <DestructiveConfirm
+    open={confirmExternalInstall}
+    title={detail?.isMas ? "App Store Version Detected" : "Overwrite manual installation?"}
+    confirmLabel={detail?.isMas ? "Installation Blocked" : "Install & Override"}
+    confirmVariant="danger"
+    confirmDisabled={detail?.isMas}
+    onCancel={() => (confirmExternalInstall = false)}
+    onConfirm={() => {
+      confirmExternalInstall = false;
+      doInstall(true);
+    }}
+  >
+    {#if detail?.isMas}
+      <div class="mas-warning-box">
+        <p>An existing version of <strong>{ui.selectedPackage?.name}</strong> was found in your Applications folder, but it was installed via the <strong>Mac App Store</strong>.</p>
+        <p>App Store bundles are system-protected, owned by different system permissions, and locked by macOS security policies. Overwriting them directly via Homebrew (which runs as a standard user) will always fail with permission errors.</p>
+        <div class="mas-instruction">
+          <strong>Resolution:</strong> Please drag <strong>{ui.selectedPackage?.name}.app</strong> from your <code>/Applications</code> folder to the Trash (macOS will prompt for your administrator password). Once the App Store version is deleted, return here to install it cleanly via Homebrew!
+        </div>
+      </div>
+    {:else}
+      <p>An existing version of <strong>{ui.selectedPackage?.name}</strong> was found in your Applications folder. If you proceed, Homebrew will force-install and overwrite the existing bundle.</p>
+    {/if}
   </DestructiveConfirm>
 
   <IssueModal
@@ -2191,5 +2233,43 @@
   }
   @media (prefers-reduced-motion: reduce) {
     :global(.spin-slow) { animation: none; }
+  }
+
+  .mas-warning-box {
+    background: var(--color-warning-subtle);
+    border-left: 3px solid var(--color-warning);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-md);
+    color: var(--color-text-primary);
+    margin-bottom: var(--space-4);
+    text-align: left;
+    font-size: var(--text-body);
+    line-height: var(--lh-body);
+  }
+  .mas-warning-box p {
+    margin: 0 0 var(--space-2) 0;
+  }
+  .mas-warning-box p:last-child {
+    margin: 0;
+  }
+  .mas-warning-box strong {
+    color: var(--color-warning-strong);
+    font-weight: var(--fw-semibold);
+  }
+  .mas-instruction {
+    background: var(--color-surface-raised);
+    border: 1px solid var(--color-border);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    margin-top: var(--space-3);
+    color: var(--color-text-primary);
+    font-size: var(--text-body-sm);
+  }
+  .mas-instruction code {
+    font-family: var(--font-mono);
+    font-size: var(--text-mono);
+    background: var(--color-surface);
+    padding: 1px 4px;
+    border-radius: var(--radius-sm);
   }
 </style>
