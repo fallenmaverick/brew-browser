@@ -445,6 +445,9 @@ final class AppModel {
     /// `closeDetail` (the ⊗ close box). A drag-collapse of the inspector must
     /// NOT clear it, or re-expanding within the same gesture shows an empty pane.
     var detailPackage: InstalledPackage?
+    /// The section the inspector was opened from. When the user navigates to a
+    /// different section, the detail closes (it belongs to where it was opened).
+    var detailSection: Section?
     /// Inspector PRESENTATION flag — what the `.inspector(isPresented:)` binding
     /// reads/writes. A divider drag past `min` flips this to false (collapse)
     /// while `detailPackage` survives, so the panel can re-expand with content.
@@ -657,13 +660,21 @@ final class AppModel {
     /// Open the inspector for a package and load its full detail.
     func openDetail(_ pkg: InstalledPackage) {
         detailPackage = pkg
+        detailSection = selection
         showDetail = true
         Task { await loadDetail(pkg) }
+    }
+
+    /// Close the inspector if it was opened from a different section than the one
+    /// now selected — navigating away dismisses the detail.
+    func closeDetailIfSectionChanged() {
+        if showDetail, detailSection != selection { closeDetail() }
     }
 
     func closeDetail() {
         showDetail = false
         detailPackage = nil
+        detailSection = nil
         detailInfo = nil
         detailEnrichment = nil
         detailCategories = []

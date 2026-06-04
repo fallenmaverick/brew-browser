@@ -30,6 +30,9 @@ public struct ContentView: View {
                     .tag(section)
             }
             .navigationTitle("brew-browser")
+            // The inspector belongs to the section that opened it — navigating
+            // to a different section dismisses it.
+            .onChange(of: model.selection) { model.closeDetailIfSectionChanged() }
             // Wider sidebar so section labels + count badges never crowd, and
             // there's room for the toolbar's icon+text mode without overflow.
             .navigationSplitViewColumnWidth(min: 220, ideal: 240, max: 300)
