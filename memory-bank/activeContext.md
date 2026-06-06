@@ -1,30 +1,33 @@
 # Active Context
 
-> ## ⚗️ Active branch: `experiment/native-swift-liquid-glass` (2026-05-31)
+> ## ⚗️ Active branch: `experiment/native-swift-liquid-glass` (updated 2026-06-06)
 >
-> The current working branch is **not** `main`. It's an off-`main` experiment: a
-> faithful **port** of the Tauri interface to native Swift 6 + SwiftUI + Liquid
-> Glass (macOS 26 Tahoe), living in `native/` as a Swift Package. It's a port,
-> not a redesign — data sources + functionality stay identical to the shipped
-> Tauri app. **Entirely uncommitted; no commits past `main`. `main` (Tauri
-> v0.5.0) is untouched** — the rest of this file describes that shipped state and
-> still holds for `main`.
+> Off-`main` branch: native Swift 6 + SwiftUI + Liquid Glass (macOS 26) port of
+> the Tauri app, in `native/`. `main` is the shipped Tauri v0.5.0.
 >
-> **Done + building clean** (`cd native && ./build-app.sh debug`, 0 errors):
-> Dashboard (parity), package detail inspector (all 14 sections live), Settings
-> (9-tab stock `TabView`), data layer (6 services + LocalPrefs ported).
-> **Next:** Library panel (row→detail wired; needs kind pills, sort, filters),
-> then Discover / Trending / Snapshots / Services / Activity. **Deferred:**
-> Sparkle in-app updates; Vulns "scan all".
+> **STATUS: native is at FULL feature parity with Tauri.** All committed + pushed
+> (`892cbdf`…`e08a377`). The big parity push (bundles A–F: keyboard+⌘K palette,
+> vulnerability surfacing, Sparkle updater, enrichment/Discover, upgrade sheet +
+> GitHub detail, About/toasts/window-state) is DONE — see
+> `tasks/2026-06/09-native-parity-roadmap.md` (roadmap) + `10-*` (polish/Sparkle/
+> rename). The Sparkle/vulns "deferred" items from the old banner are now done.
 >
-> Build loop: edit → `cd native && ./build-app.sh debug` → `killall BrewBrowser;
-> open native/BrewBrowser.app` → user screenshots. Toolchain: SPM only
-> (`xcode-select` → CommandLineTools, no `xcodebuild`). Constraint: **stock Apple
+> **App is now "Brew Browser"** (both builds; menu bar + Dock). Native version
+> 0.1.0, Tauri 0.5.0 (independent on purpose). Native NOT yet
+> notarized/distributed — that's the deploy step (needs Developer ID +
+> `native/release.sh`).
+>
+> **Open threads → see [[project-resume-state]] (auto-memory):** Tauri-rename
+> release-notes migration line; optional About "Opus 4.7→4.8" + prose
+> capitalization; native notarization for deploy. Two intentional stock
+> divergences remain (detail-pane width not persisted; Activity drawer aria-live).
+>
+> Build loop: `cd native && ./build-app.sh && open native/BrewBrowser.app` (use
+> the .app, NOT Xcode Run / `swift run` — unbundled binary = no Info.plist, and
+> Sparkle stays inert there). Tauri: `npm run check`. Constraint: **stock Apple
 > components only, no overrides.**
 >
-> See `native/README.md`, `decisions.md` (2026-05-30 ADR),
-> `tasks/2026-05/21-native-swift-liquid-glass-rebuild.md`, and the 2026-05-31
-> entry in `progress.md`.
+> See `decisions.md` (2026-06-06 deploy-prep entry), `tasks/2026-06/09`+`10`.
 
 ---
 

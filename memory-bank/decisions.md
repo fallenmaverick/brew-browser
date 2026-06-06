@@ -427,3 +427,24 @@ project doesn't justify the bridge engineering of Option B yet.
 nothing (the 2026-05-30 native-rebuild ADR framed the Swift app as an experiment
 "unless/until it proves out" — this commits to keeping both regardless, with
 defined roles). See [[project-native-swift-rebuild]] cross-session memory.
+
+### 2026-06-06: Native deploy-prep decisions (parity push, Sparkle, rename)
+**Status:** Approved + implemented (task `tasks/2026-06/10-*`).
+- **Vuln scan = one `brew vulns --json` over the install set, parsed per-record.**
+  `brew vulns --formula X` ignores the filter + returns everything; per-formula
+  iteration over-reported (every package flagged) and was ~331× slow. Both apps
+  now do a single call and key findings by `record.formula`. `VulnsService`
+  (Swift) is a `Sendable struct`, not an actor (serialization trap).
+- **Never show a green "no vulnerabilities" all-clear from a cached/stale scan.**
+  Green only when scanned THIS session; cache-hydrated → amber caution; never
+  scanned → hazard. A security tool must not imply safety it hasn't verified.
+- **Self-updater = Sparkle 2** (decided 2026-06-06). Public ed25519 key committed
+  in `build-app.sh`; private key in login Keychain; `native/release.sh` does the
+  signed+notarized release + appcast. Two update feeds coexist on the host
+  (`/appcast.xml` native, `/updater.json` Tauri) — never clobber one with the
+  other. Updater stays inert when run unbundled (Xcode/`swift run`).
+- **App display name = "Brew Browser"** (both builds). Native done freely (no
+  users). Tauri `productName` renamed too (renames the bundle file → flag the
+  duplicate-on-update migration for shipped 0.5.0 users in release notes).
+- **Versions stay independent** (native 0.1.0, Tauri 0.5.0) — separate apps,
+  separate bundle ids + update feeds; no edition marker / no "n" suffix.
