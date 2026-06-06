@@ -95,14 +95,22 @@ struct ServicesView: View {
     // MARK: - Cells
 
     private func nameCell(_ svc: Service) -> some View {
-        Button {
-            // Services are formulae; open the detail inspector (loadDetail
-            // resolves the package info).
-            model.openDetail(InstalledPackage(name: svc.name, version: "—", kind: .formula))
-        } label: {
-            Text(svc.name).lineLimit(1)
+        HStack(spacing: 6) {
+            Button {
+                // Services are formulae; open the detail inspector (loadDetail
+                // resolves the package info).
+                model.openDetail(InstalledPackage(name: svc.name, version: "—", kind: .formula))
+            } label: {
+                Text(svc.name).lineLimit(1)
+            }
+            .buttonStyle(.link)
+            // Per-row severity dot — services are formulae, so look the name up
+            // in the install-wide scan rollup (no-ops when scanning is off or the
+            // formula is clean / unscanned). Same dot as Library/Discover/Trending.
+            if let vuln = model.vulnSummary(for: svc.name), let severity = vuln.maxSeverity {
+                SeverityDot(severity: severity, count: vuln.total)
+            }
         }
-        .buttonStyle(.link)
     }
 
     @ViewBuilder

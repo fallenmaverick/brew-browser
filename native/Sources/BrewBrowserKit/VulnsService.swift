@@ -175,7 +175,14 @@ enum VulnsServiceError: Error, LocalizedError {
 /// to brew-vulns (by Andrew Nesbitt, `Homebrew/homebrew-brew-vulns`)
 /// rather than re-implementing the OSV query layer, so we inherit
 /// upstream fixes automatically.
-actor VulnsService {
+///
+/// A plain `Sendable` struct (not an `actor`): it holds no mutable state —
+/// just the resolved brew path plus read-only scan/parse methods. As an
+/// actor, every `scanOne` SERIALIZED on the single actor instance, so the
+/// install-wide sweep ran `brew vulns` one formula at a time (~331 calls
+/// back-to-back). As a struct, those subprocess calls run in PARALLEL, the
+/// same fix already applied to `BrewService`/`GitHubService`.
+struct VulnsService: Sendable {
     /// Canonical install command for `brew vulns`, surfaced verbatim by
     /// the install affordance. Pinned (matches the Rust
     /// `BREW_VULNS_INSTALL_CMD`).

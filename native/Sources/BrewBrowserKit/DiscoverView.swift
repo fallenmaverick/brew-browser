@@ -250,7 +250,12 @@ struct DiscoverView: View {
         HStack(spacing: 8) {
             PackageIcon(model: model, token: row.token, kind: row.kind, homepage: row.homepage)
             VStack(alignment: .leading, spacing: 1) {
-                Text(row.token)
+                HStack(spacing: 6) {
+                    Text(row.token)
+                    if let severity = row.maxSeverity {
+                        SeverityDot(severity: severity, count: row.vulnCount)
+                    }
+                }
                 if !row.friendlyName.isEmpty {
                     Text(row.friendlyName).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                 }

@@ -81,6 +81,11 @@ struct DiscoverRow: Identifiable, Hashable, Sendable {
     let homepage: String
     let summary: String
     let isInstalled: Bool
+    /// Highest-severity known finding, or nil when clean / not-yet-scanned.
+    /// Drives the per-row severity dot, same source as Library (`vulnIndex`).
+    let maxSeverity: VulnSeverity?
+    /// Number of known findings (any severity) — backs the dot's hover tooltip.
+    let vulnCount: Int
 
     var installedRank: Int { isInstalled ? 1 : 0 }
 }
@@ -106,6 +111,11 @@ struct TrendingRow: Identifiable, Hashable, Sendable {
     let velocity: Double?
     /// Inline sparkline points (enhanced layer); empty when off/absent.
     let sparkline: [Double]
+    /// Highest-severity known finding, or nil when clean / not-yet-scanned.
+    /// Drives the per-row severity dot, same source as Library (`vulnIndex`).
+    let maxSeverity: VulnSeverity?
+    /// Number of known findings (any severity) — backs the dot's hover tooltip.
+    let vulnCount: Int
 
     /// Comparable proxy so velocity sorts with no-velocity rows pinned low.
     var velocityRank: Double { velocity ?? -Double.greatestFiniteMagnitude }
@@ -263,6 +273,7 @@ public final class AppModel {
         guard !catalog.isEmpty else { return [] }
         let installedIDs = Set(installed.map { "\($0.kind.rawValue):\($0.name)" })
         let showSummary = settings.aiFeaturesVisible
+        let showVulns = settings.vulnerabilityScanningAllowed
         let q = globalQuery.trimmingCharacters(in: .whitespaces)
         let cat = discoverCategory
 
@@ -277,6 +288,7 @@ public final class AppModel {
             }
             let entry = showSummary ? enrichmentEntry(for: pkg.token) : nil
             let friendly = entry?.friendlyName ?? ""
+            let vuln = showVulns ? vulnIndex[pkg.token] : nil
             return DiscoverRow(
                 token: pkg.token,
                 name: pkg.displayName,
@@ -285,7 +297,9 @@ public final class AppModel {
                 kind: pkg.kind,
                 homepage: pkg.homepage,
                 summary: showSummary ? (entry?.summary ?? pkg.desc) : pkg.desc,
-                isInstalled: installedIDs.contains("\(pkg.kind.rawValue):\(pkg.token)")
+                isInstalled: installedIDs.contains("\(pkg.kind.rawValue):\(pkg.token)"),
+                maxSeverity: (vuln?.total ?? 0) > 0 ? vuln?.maxSeverity : nil,
+                vulnCount: vuln?.total ?? 0
             )
         }
     }
@@ -416,11 +430,13 @@ public final class AppModel {
         guard !trendingEntries.isEmpty else { return [] }
         let installedIDs = Set(installed.map { "\($0.kind.rawValue):\($0.name)" })
         let showSummary = settings.aiFeaturesVisible
+        let showVulns = settings.vulnerabilityScanningAllowed
         return trendingEntries.map { e in
             let cat = catalogLookup(e.token, e.kind)
             let id = "\(e.kind.rawValue):\(e.token)"
             let entry = showSummary ? enrichmentEntry(for: e.token) : nil
             let friendly = entry?.friendlyName ?? ""
+            let vuln = showVulns ? vulnIndex[e.token] : nil
             return TrendingRow(
                 rank: e.rank,
                 token: e.token,
@@ -434,7 +450,9 @@ public final class AppModel {
                 installCount: e.installCount,
                 isInstalled: installedIDs.contains(id),
                 velocity: e.velocity,                 // computed from analytics windows
-                sparkline: sparklineIndex[id] ?? []   // opt-in enhanced overlay
+                sparkline: sparklineIndex[id] ?? [],  // opt-in enhanced overlay
+                maxSeverity: (vuln?.total ?? 0) > 0 ? vuln?.maxSeverity : nil,
+                vulnCount: vuln?.total ?? 0
             )
         }
     }
@@ -775,8 +793,18 @@ public final class AppModel {
     }
 
     /// Count of installed packages with at least one known finding. Backs the
-    /// Library Vulnerable pill count + the sidebar badge.
+    /// Library Vulnerable pill count + the sidebar footer badge.
     var vulnerableCount: Int { vulnExposure.vulnerablePackages }
+
+    /// Per-package severity rollup for `name`, but only when there's an actual
+    /// finding AND scanning is enabled — otherwise nil so the per-row dot no-ops
+    /// cleanly (off / unscanned packages render no dot). Used by views that look
+    /// up by name (Services rows, Dashboard updates preview).
+    func vulnSummary(for name: String) -> VulnSummary? {
+        guard settings.vulnerabilityScanningAllowed else { return nil }
+        guard let summary = vulnIndex[name], summary.total > 0 else { return nil }
+        return summary
+    }
 
     // ---- Install trend ----
     var detailTrend: TrendingHistorySeries?
@@ -883,15 +911,14 @@ public final class AppModel {
 
     /// Count badge for a sidebar section (nil = no badge). Library shows the
     /// outdated count; Services shows running services; Activity shows running
-    /// jobs. Dashboard surfaces the vulnerable-package count (the native home
-    /// for the vuln badge — the Exposure card lives on the Dashboard, and the
-    /// Tauri sidebar vuln badge likewise routes to the Dashboard on click; the
-    /// stock `.badge` carries one number, so vulns ride the Dashboard row
-    /// rather than crowding Library's outdated count).
+    /// jobs. The vulnerable-package count is NOT a nav badge — a bare number on
+    /// the Dashboard row reads as confusing (and climbs distractingly during a
+    /// live sweep). It lives in the sidebar FOOTER instead ("● N vulnerable"),
+    /// mirroring the Tauri sidebar footer badge.
     func badge(for section: Section) -> Int? {
         switch section {
         case .dashboard:
-            return settings.vulnerabilityScanningAllowed && vulnerableCount > 0 ? vulnerableCount : nil
+            return nil
         case .library:  return outdatedCount > 0 ? outdatedCount : nil
         case .services: return runningServices > 0 ? runningServices : nil
         case .activity:
@@ -1351,9 +1378,15 @@ public final class AppModel {
     ///
     /// Gated on `vulnerabilityScanningAllowed` (Offline Mode off + toggle on),
     /// matching the detail scan and the Tauri store's `enabled` predicate.
-    /// Runs each `scanOne` off the main actor (the `VulnsService` actor) and
-    /// folds results in incrementally so the Exposure card / Library dots fill
-    /// in progressively rather than blocking on the whole sweep.
+    /// Runs the per-formula `scanOne` calls CONCURRENTLY (bounded) off the main
+    /// actor — `VulnsService` is a plain `Sendable` struct, so the subprocesses
+    /// no longer serialize on a single actor (the trap that made a ~331-formula
+    /// sweep crawl one `brew vulns` at a time). Results fold in incrementally so
+    /// the Exposure card / Library dots fill in progressively as the sweep runs.
+    /// Whether the install-wide sweep may keep scheduling work. Re-read each
+    /// iteration so flipping Offline Mode on mid-sweep stops it.
+    private var gateOpen: Bool { settings.vulnerabilityScanningAllowed }
+
     func scanAllVulns() async {
         guard settings.vulnerabilityScanningAllowed else { return }
         guard !vulnScanAllLoading else { return }
@@ -1368,15 +1401,47 @@ public final class AppModel {
         brewVulnsInstalled = installedHelper
         guard installedHelper else { return }
 
+        // Bound concurrency so a large install doesn't spawn hundreds of `brew
+        // vulns` subprocesses at once (each is a process + network round-trip).
+        let maxConcurrent = 8
+        let service = vulns
+        let formulae = installed.filter { $0.kind == .formula }.map(\.name)
+
         var index: [String: VulnSummary] = [:]
-        for pkg in installed where pkg.kind == .formula {
-            // Re-check the gate each iteration: a long sweep shouldn't keep
-            // hitting the network after the user flips Offline Mode on.
-            guard settings.vulnerabilityScanningAllowed else { break }
-            let findings = (try? await vulns.scanOne(name: pkg.name, isCask: false)) ?? []
-            index[pkg.name] = VulnSummary.from(findings)
-            // Publish incrementally so dots/cards fill in as the sweep runs.
-            vulnIndex[pkg.name] = index[pkg.name]
+        index = await withTaskGroup(of: (String, VulnSummary).self) { group in
+            var built: [String: VulnSummary] = [:]
+            var iterator = formulae.makeIterator()
+            var inFlight = 0
+
+            // Seed up to `maxConcurrent` tasks, re-checking the gate so flipping
+            // Offline Mode on mid-sweep stops scheduling more. The group closure
+            // is nonisolated, so the @MainActor settings read is the only hop —
+            // `scheduleNext` stays here (no `group` crossing isolation).
+            func scheduleNext() -> Bool {
+                guard let name = iterator.next() else { return false }
+                group.addTask {
+                    let findings = (try? await service.scanOne(name: name, isCask: false)) ?? []
+                    return (name, VulnSummary.from(findings))
+                }
+                inFlight += 1
+                return true
+            }
+
+            while inFlight < maxConcurrent, gateOpen, scheduleNext() {}
+
+            // Drain results as they complete, publishing each incrementally so
+            // dots/cards fill in live, then top the group back up to the cap
+            // (only while the gate is still open). The group closure runs on the
+            // main actor (it touches @MainActor state), so publishing to
+            // `vulnIndex` and re-reading the gate are direct, suspension-free —
+            // only the spawned `scanOne` subprocess work runs off-actor / parallel.
+            while let (name, summary) = await group.next() {
+                inFlight -= 1
+                built[name] = summary
+                vulnIndex[name] = summary
+                if gateOpen { _ = scheduleNext() }
+            }
+            return built
         }
         // Replace wholesale so a package uninstalled mid-sweep drops out of the
         // index rather than lingering as a stale finding.

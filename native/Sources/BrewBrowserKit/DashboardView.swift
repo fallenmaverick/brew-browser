@@ -225,8 +225,16 @@ struct UpdatesCard: View {
                     } label: {
                         HStack(spacing: 10) {
                             // Name column — flexible, takes remaining space.
-                            Text(p.name)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                            HStack(spacing: 6) {
+                                Text(p.name)
+                                // Per-row severity dot from the install-wide scan
+                                // (no-ops when scanning is off / package is clean).
+                                if let vuln = model.vulnSummary(for: p.name),
+                                   let severity = vuln.maxSeverity {
+                                    SeverityDot(severity: severity, count: vuln.total)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
                             // Kind column — fixed width so pills align vertically.
                             KindPill(kind: p.kind)
                                 .frame(width: 84, alignment: .leading)

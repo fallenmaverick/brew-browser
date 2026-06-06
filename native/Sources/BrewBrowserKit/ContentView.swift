@@ -46,7 +46,10 @@ public struct ContentView: View {
             // (`Sidebar.svelte:321-334`). Click re-probes the brew env. Stock
             // `.safeAreaInset` keeps it pinned below the scrolling List.
             .safeAreaInset(edge: .bottom) {
-                BrewStatusRow(model: model)
+                VStack(spacing: 0) {
+                    VulnFooterRow(model: model)
+                    BrewStatusRow(model: model)
+                }
             }
             // The inspector belongs to the section that opened it — navigating
             // to a different section dismisses it.
@@ -487,6 +490,40 @@ struct BrewStatusRow: View {
         case .running: return .orange
         case .missing: return .red
         case .unknown: return .secondary
+        }
+    }
+}
+
+/// Sidebar footer vulnerable-package row — a red dot + "N vulnerable" label that
+/// opens the Library Vulnerable filter on click. Sits ABOVE the brew-health row,
+/// mirroring the Tauri sidebar footer vuln badge. Shown only when scanning is
+/// enabled AND the install-wide scan has surfaced at least one finding (so it
+/// no-ops cleanly when vuln scanning is off / nothing is vulnerable). Stock plain
+/// `Button` matching `BrewStatusRow`'s styling; no chrome overrides.
+struct VulnFooterRow: View {
+    @Bindable var model: AppModel
+
+    var body: some View {
+        if model.settings.vulnerabilityScanningAllowed, model.vulnerableCount > 0 {
+            Button {
+                model.openVulnerableInLibrary()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "circle.fill")
+                        .font(.system(size: 8))
+                        .foregroundStyle(.red)
+                    Text("\(model.vulnerableCount) vulnerable")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    Spacer()
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .help("\(model.vulnerableCount) installed package\(model.vulnerableCount == 1 ? " has" : "s have") known vulnerabilities. Click to view them in Library.")
         }
     }
 }
