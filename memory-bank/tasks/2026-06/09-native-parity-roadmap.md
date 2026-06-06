@@ -9,6 +9,19 @@ Derived from a full side-by-side feature sweep of both builds (Activity already
 done, task 08). Items grouped into **bundles** ordered by leverage. Each item
 lists the Tauri source and the native destination.
 
+## STATUS — ALL BUNDLES LANDED (2026-06-06)
+All six bundles implemented, built clean, committed + pushed on
+`experiment/native-swift-liquid-glass`:
+- A keyboard + ⌘K palette → `b9f5cfd`
+- B vulnerability surfacing → `7f49aff`
+- D enrichment / Discover → `21fb4a5`
+- E upgrade sheet + GitHub detail → `8c54da4`
+- F About / status row / toasts / window state → `7105733`
+- C Sparkle self-updater → `f0f0d41`
+**Only remaining = the two human-run Sparkle items** (real `SUPublicEDKey` + host
+the appcast/zip on `brew-browser.zerologic.com`). See "Releasing native (Sparkle)"
+at the bottom. Everything builds + functions today.
+
 ## Execution model
 - **Single compiled codebase** → Swift edits are serialized (parallel edits to
   `AppModel.swift`/`ContentView.swift` would conflict + break the build).
