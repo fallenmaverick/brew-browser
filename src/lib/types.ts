@@ -1046,6 +1046,30 @@ export interface ActivityLine {
   ts: string;
 }
 
+/** Classification of an activity job into a package-change kind.
+ *  `other` = not a per-package change (tap update / Brewfile bundle) and is
+ *  excluded from the "Recent changes" feed. Mirrors the native (Swift) enum. */
+export type ChangeKind = "installed" | "upgraded" | "uninstalled" | "other";
+
+/** A single derived "recent change" — a pure projection of an {@link ActivityJob},
+ *  NOT a separately-persisted record. Carries the action kind, affected package
+ *  (null for bulk upgrades), an optional bulk `count`, a normalized timestamp
+ *  (epoch ms — Tauri from ISO `startedAt`, native from epoch-seconds), and the
+ *  terminal status. Deliberately carries NO version delta: the activity log
+ *  records no structured old→new version, so neither shell fabricates one. */
+export interface RecentChange {
+  jobId: string;
+  kind: Exclude<ChangeKind, "other">;
+  /** Affected package name, or null for a bulk upgrade (no per-package names). */
+  package: string | null;
+  /** Number of packages for a bulk upgrade ("Upgrading N packages"); null for
+   *  single-package changes and for "Upgrading all packages" (count unknown). */
+  count: number | null;
+  /** Job start time normalized to epoch milliseconds. */
+  timestamp: number;
+  status: "succeeded" | "failed" | "canceled";
+}
+
 /** Command-palette item — either a verb (action) or a package. */
 export type PaletteItem =
   | { kind: "command"; id: string; label: string; shortcut?: string; section?: string; run: () => void | Promise<void> }

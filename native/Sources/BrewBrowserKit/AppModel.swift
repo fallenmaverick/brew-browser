@@ -629,6 +629,22 @@ public final class AppModel {
         libraryCategory = nil
     }
 
+    /// Open the Activity history — the "more in Activity →" deep-link from the
+    /// Dashboard "Recent changes" card. The full change history lives there; the
+    /// card only previews the most recent few.
+    func openActivity() {
+        selection = .activity
+    }
+
+    /// The most-recent package changes (installed / upgraded / uninstalled),
+    /// derived purely from the existing persisted job history — no new data, no
+    /// new subprocess. Drives the Dashboard "Recent changes" card; capped to a
+    /// short preview (the full list lives in Activity). Mirrors the Tauri
+    /// `recentChanges(jobs)` contract (`RecentChanges.swift`).
+    var recentChangesPreview: [RecentChange] {
+        Array(RecentChanges.recentChanges(jobs).prefix(6))
+    }
+
     /// Open Library filtered to packages with known vulnerabilities. Used by the
     /// Dashboard Exposure card's "View vulnerable packages" link and the sidebar
     /// vuln badge. Mirrors the Tauri `viewVulnerablePackages` (setSection then
