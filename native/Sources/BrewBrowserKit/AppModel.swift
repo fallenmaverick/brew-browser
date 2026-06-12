@@ -38,6 +38,8 @@ enum LibraryFilter: String, CaseIterable, Identifiable, Hashable {
     case formulae   = "Formulae"
     case casks      = "Casks"
     case outdated   = "Outdated"
+    case manual     = "Manual"
+    case dependency = "Dependency"
     case vulnerable = "Vulnerable"
 
     var id: String { rawValue }
@@ -192,6 +194,10 @@ public final class AppModel {
             case .formulae:   guard pkg.kind == .formula else { return nil }
             case .casks:      guard pkg.kind == .cask else { return nil }
             case .outdated:   guard outdatedSet.contains(pkg.name) else { return nil }
+            // Manual = installed on request; Dependency = a formula NOT on request
+            // (casks are always on-request, so never appear under Dependency) (#3).
+            case .manual:     guard pkg.installedOnRequest else { return nil }
+            case .dependency: guard pkg.kind == .formula && !pkg.installedOnRequest else { return nil }
             case .vulnerable: guard (vuln?.total ?? 0) > 0 else { return nil }
             }
             if !q.isEmpty, !pkg.name.localizedCaseInsensitiveContains(q) { return nil }
@@ -227,6 +233,8 @@ public final class AppModel {
         case .formulae:   return installed.lazy.filter { $0.kind == .formula }.count
         case .casks:      return installed.lazy.filter { $0.kind == .cask }.count
         case .outdated:   return outdatedNames.count
+        case .manual:     return installed.lazy.filter { $0.installedOnRequest }.count
+        case .dependency: return installed.lazy.filter { $0.kind == .formula && !$0.installedOnRequest }.count
         case .vulnerable: return vulnerableCount
         }
     }
@@ -1157,7 +1165,17 @@ public final class AppModel {
             // Library lists BOTH formulae and casks (the Casks filter was empty
             // because we only loaded formulae). Dashboard's formula/cask counts
             // come from their own brew calls in loadDashboard.
-            installed = try await brew.listInstalledAll()
+            // Fetch the on-request formula set alongside the install list so we
+            // can tag each package for the Manual/Dependency filters (#3). The
+            // set comes from the same brew call that backs the on-request stat.
+            async let allTask = brew.listInstalledAll()
+            async let onRequestTask = brew.listOnRequestFormulae()
+            let all = try await allTask
+            let onRequest = try await onRequestTask
+            // Casks are always user-installed (matches Tauri parse.rs:393-394
+            // setting on_request=true for every installed cask); formulae are
+            // on-request only if brew lists them in the on-request set.
+            installed = BrewService.taggingOnRequest(all, onRequest: onRequest)
             formulaCount = installed.lazy.filter { $0.kind == .formula }.count
             caskCount = installed.lazy.filter { $0.kind == .cask }.count
         } catch {

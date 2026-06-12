@@ -180,7 +180,25 @@ struct PackageDetailView: View {
         VStack(spacing: 0) {
             metaRow("Token", pkg.name, mono: true)
             Divider()
-            metaRow("Installed", info?.installedVersion ?? "Not installed")
+            HStack {
+                Text("Installed").foregroundStyle(.secondary)
+                    .frame(width: 90, alignment: .leading)
+                Text(info?.installedVersion ?? "Not installed")
+                    .textSelection(.enabled)
+                // Dependency indicator: a formula installed only as a dependency
+                // (not on request) — mirrors the Tauri detail badge. Casks are
+                // always on-request so never show this. Feature #3.
+                if isInstalled, pkg.kind == .formula, !pkg.installedOnRequest {
+                    Text("Dependency")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(Color.secondary.opacity(0.12), in: .capsule)
+                        .help("Installed as a dependency, not requested directly")
+                }
+                Spacer()
+            }
+            .padding(.vertical, 6)
             Divider()
             HStack {
                 Text("Latest").foregroundStyle(.secondary)

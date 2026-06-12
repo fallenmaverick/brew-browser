@@ -12,6 +12,13 @@ struct InstalledPackage: Identifiable, Hashable, Sendable {
     let name: String
     let version: String
     let kind: Kind
+    /// Whether brew records this package as installed *on request* (the user ran
+    /// `brew install foo`), vs pulled in only as a dependency. Tagged at load
+    /// time from the `brew list --installed-on-request --formula` set (formulae)
+    /// + the cask rule (all installed casks count as on-request). Drives the
+    /// Manual vs Dependency Library filters. Defaults to `false` so the
+    /// `list --versions` constructors stay valid before tagging. Feature #3.
+    var installedOnRequest: Bool = false
 
     enum Kind: String, Sendable { case formula, cask }
 }
@@ -343,6 +350,39 @@ struct BrewService: Sendable {
     /// in as dependencies. Mirrors the Tauri "N on request" chip.
     func countOnRequest() async throws -> Int {
         try await lineCount(["list", "--installed-on-request", "--formula"])
+    }
+
+    /// Set of formula names the user explicitly requested, from
+    /// `brew list --installed-on-request --formula`. Parallel to `countOnRequest`
+    /// (same brew call), but returns the names so `loadLibrary` can tag each
+    /// `InstalledPackage.installedOnRequest`. Drives the Manual/Dependency Library
+    /// filters. Feature #3.
+    func listOnRequestFormulae() async throws -> Set<String> {
+        let raw = try await runCapture(["list", "--installed-on-request", "--formula"])
+        return BrewService.parseNameSet(raw)
+    }
+
+    /// Parse newline-delimited brew output into a name `Set`, skipping blank
+    /// lines — same line handling as `lineCount`. Static + pure so it can be
+    /// unit-tested without shelling out (mirrors the Rust parse tests).
+    static func parseNameSet(_ raw: String) -> Set<String> {
+        Set(raw.split(separator: "\n").map { String($0) }.filter { !$0.isEmpty })
+    }
+
+    /// Tag each installed package with `installedOnRequest`, given the on-request
+    /// formula name set from `listOnRequestFormulae`. Casks are always treated as
+    /// on-request (matching Tauri parse.rs:393-394, which sets on_request=true for
+    /// every installed cask); formulae are on-request only if present in the set.
+    /// Static + pure for unit testing. Feature #3.
+    static func taggingOnRequest(
+        _ packages: [InstalledPackage],
+        onRequest: Set<String>
+    ) -> [InstalledPackage] {
+        packages.map { pkg in
+            var p = pkg
+            p.installedOnRequest = pkg.kind == .cask || onRequest.contains(pkg.name)
+            return p
+        }
     }
 
     /// Pinned formulae (held back from upgrade). Mirrors the "N pinned" chip.

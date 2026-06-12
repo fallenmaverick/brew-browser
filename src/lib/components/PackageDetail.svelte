@@ -1057,6 +1057,29 @@
               {/if}
             </dd>
           </div>
+          <!-- Feature #3 — install provenance. Only meaningful for an
+               actually-installed package, and only when a per-keg brew
+               flag is set (legacy/neither-flag kegs render no row rather
+               than a fabricated default). "Dependency" wins a Pill badge
+               (mirrors the Feature #2 deprecation badge intent); explicit
+               on-request installs read plainly as "On request". The
+               Dependency case keys on installedAsDependency && NOT
+               on-request, matching the Library "Dependency" filter so a
+               both-flags-true package reads as Manual ("On request"). -->
+          {#if pkg.installedVersion && (pkg.installedOnRequest || pkg.installedAsDependency)}
+            <div>
+              <dt>Install</dt>
+              <dd>
+                {#if pkg.installedOnRequest}
+                  On request
+                {:else}
+                  <span title="Installed as a dependency of another package, not requested directly.">
+                    <Pill tone="info">dependency</Pill>
+                  </span>
+                {/if}
+              </dd>
+            </div>
+          {/if}
           <div>
             <dt>Latest</dt>
             <dd>
