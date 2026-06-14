@@ -23,3 +23,6 @@ assigned when the release is cut.
 - **@modeezie** — the Brew Doctor / Cleanup cache-maintenance request, with a
   nicely scoped "show me what it's doing" ask and the safer non-scrub default
   suggestion (#80).
+- **@cyberchen1995** and **@kaalualu** — both caught the `depends_on macos:`
+  string-syntax deprecation that broke the cask under Homebrew 6.0, and sent
+  fixes (cask PRs #1 / #3).
