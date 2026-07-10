@@ -10,7 +10,12 @@
   import AlertTriangle from "@lucide/svelte/icons/alert-triangle";
 
   import { activity } from "$lib/stores/activity.svelte";
-  import { ui } from "$lib/stores/ui.svelte";
+  import ResizeHandle from "$lib/components/ResizeHandle.svelte";
+  import {
+    ACTIVITY_DRAWER_DEFAULT_HEIGHT,
+    ACTIVITY_DRAWER_MIN_HEIGHT,
+    ui,
+  } from "$lib/stores/ui.svelte";
   import { toast } from "$lib/stores/toast.svelte";
   import type { ActivityLine } from "$lib/types";
   import { openReportIssueFromJob } from "$lib/util/reportIssue";
@@ -21,6 +26,12 @@
     type RecoveryOption,
     type RecoveryKind,
   } from "$lib/util/recovery";
+
+  type Props = {
+    maxHeight: number;
+  };
+
+  let { maxHeight }: Props = $props();
 
   let consoleEl: HTMLDivElement | undefined = $state();
   let autoScroll = $state(true);
@@ -230,7 +241,24 @@
 </script>
 
 {#if ui.drawerOpen}
-  <div class="drawer" class:minimized={ui.drawerMinimized}>
+  <div
+    class="drawer"
+    class:minimized={ui.drawerMinimized}
+    style:height={`${ui.drawerMinimized ? 32 : ui.drawerHeight}px`}
+  >
+    {#if !ui.drawerMinimized}
+      <ResizeHandle
+        size={ui.drawerHeight}
+        min={ACTIVITY_DRAWER_MIN_HEIGHT}
+        max={maxHeight}
+        defaultSize={ACTIVITY_DRAWER_DEFAULT_HEIGHT}
+        orientation="horizontal"
+        direction="up"
+        label="Resize Activity drawer"
+        onChange={(height) => (ui.drawerHeight = height)}
+        onCommit={(height) => ui.setActivityDrawerHeight(height)}
+      />
+    {/if}
     <header class="strip">
       <button class="title" onclick={() => ui.toggleDrawer()} title={ui.drawerMinimized ? "Expand drawer" : "Minimize drawer"}>
         {#if ui.drawerMinimized}<ChevronUp size={14} />{:else}<ChevronDown size={14} />{/if}
@@ -385,10 +413,10 @@
     background: var(--color-surface);
     display: flex;
     flex-direction: column;
-    min-height: 0;
+    flex: none;
     height: 280px;
-    transition: height var(--motion-duration-base) var(--motion-ease-out);
   }
+  .drawer:not(.minimized) { min-height: 252px; }
   .drawer.minimized { height: 32px; }
 
   .strip {
