@@ -462,6 +462,13 @@ struct LibraryView: View {
                     if let badge = row.deprecation.badge {
                         DeprecationBadge(kind: badge, reason: row.deprecation.activeReason)
                     }
+                    if row.pinned {
+                        // Pinned badge (#90) — held back from brew upgrade.
+                        Image(systemName: "pin.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .help("Pinned — held back from brew upgrade")
+                    }
                 }
                 if !row.friendlyName.isEmpty {
                     Text(row.friendlyName).font(.caption).foregroundStyle(.secondary).lineLimit(1)
