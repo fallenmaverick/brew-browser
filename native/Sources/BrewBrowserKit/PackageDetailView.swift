@@ -757,6 +757,20 @@ struct PackageDetailView: View {
             // during the post-install detail refresh.
             if info != nil || isInstalled {
                 if isInstalled {
+                    // Pin/Unpin (#90) — held-back packages drop out of the
+                    // update count. State from the loaded info; casks pin too.
+                    Button {
+                        Task { await model.setPinnedDetail(!(info?.pinned ?? false)) }
+                    } label: {
+                        Label(info?.pinned == true ? "Unpin" : "Pin",
+                              systemImage: info?.pinned == true ? "pin.slash" : "pin")
+                    }
+                    .disabled(model.actionRunning)
+                    .help(info?.pinned == true
+                        ? "Unpin — let brew upgrade update this again"
+                        : (model.detailPackage?.kind == .cask
+                            ? "Pin — hold back from brew upgrade. A cask that self-updates may still update on its own."
+                            : "Pin — hold back from brew upgrade"))
                     if info?.isOutdated == true {
                         Button {
                             Task { await model.upgradeDetail(greedy: LocalPrefs.shared.greedyUpgrade) }

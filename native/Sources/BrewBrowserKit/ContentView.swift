@@ -300,6 +300,8 @@ struct LibraryView: View {
                     Divider()
                     table
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    Divider()
+                    libraryCountBar
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
@@ -326,7 +328,9 @@ struct LibraryView: View {
     private var filterBar: some View {
         Picker("Filter", selection: $model.libraryFilter) {
             ForEach(model.availableLibraryFilters) { f in
-                Text("\(f.rawValue) (\(model.libraryFilterCount(f)))").tag(f)
+                // Counts moved to the bottom status bar (`libraryCountBar`) —
+                // the tabs stay clean labels.
+                Text(f.rawValue).tag(f)
             }
         }
         .pickerStyle(.segmented)
@@ -335,6 +339,30 @@ struct LibraryView: View {
         .frame(maxWidth: .infinity, alignment: .center)
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+    }
+
+    /// Bottom status tally — the same subtle style as the Services header
+    /// (`ServicesView.headerBar`), moved to the foot of the Library. It replaces
+    /// the per-tab counts removed above. Leads with the count of the ACTIVE
+    /// filter (the number of rows currently shown, so it also reflects the
+    /// search box), labelled by that filter; then the standing outdated + pinned
+    /// stats — skipping whichever the lead already names to avoid "7 outdated ·
+    /// 7 outdated". `pinned` counts formulae + casks (#90).
+    private var libraryCountBar: some View {
+        let f = model.libraryFilter
+        let shown = model.sortedLibraryRows.count
+        let noun = f == .all ? (shown == 1 ? "package" : "packages") : f.rawValue.lowercased()
+        var parts = ["\(shown) \(noun)"]
+        if f != .outdated { parts.append("\(model.libraryFilterCount(.outdated)) outdated") }
+        if f != .pinned   { parts.append("\(model.pinnedCount) pinned") }
+        return HStack(spacing: 0) {
+            Text(parts.joined(separator: " · "))
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
     }
 
     // Removable chip showing the active category filter (set by tapping a
@@ -468,6 +496,13 @@ struct LibraryView: View {
                     }
                     if let badge = row.deprecation.badge {
                         DeprecationBadge(kind: badge, reason: row.deprecation.activeReason)
+                    }
+                    if row.pinned {
+                        // Pinned badge (#90) — held back from brew upgrade.
+                        Image(systemName: "pin.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .help("Pinned — held back from brew upgrade")
                     }
                 }
                 if !row.friendlyName.isEmpty {

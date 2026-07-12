@@ -8,6 +8,8 @@
   import Trash2 from "@lucide/svelte/icons/trash-2";
   import RefreshCcw from "@lucide/svelte/icons/refresh-ccw";
   import ArrowUpCircle from "@lucide/svelte/icons/arrow-up-circle";
+  import Pin from "@lucide/svelte/icons/pin";
+  import PinOff from "@lucide/svelte/icons/pin-off";
 
   import Pill from "./Pill.svelte";
   import Button from "./Button.svelte";
@@ -44,7 +46,7 @@
   import ShieldCheck from "@lucide/svelte/icons/shield-check";
   import ShieldAlert from "@lucide/svelte/icons/shield-alert";
   import Shield from "@lucide/svelte/icons/shield";
-  import { brewInfo, brewInstall, brewUninstall, brewUpgrade, appVersion, catalogReverseDependents } from "$lib/api";
+  import { brewInfo, brewInstall, brewUninstall, brewUpgrade, brewSetPinned, appVersion, catalogReverseDependents } from "$lib/api";
   import { isLinux } from "$lib/util/platform";
   import { safeOpenUrl } from "$lib/util/url";
   import { bareToken } from "$lib/util/token";
@@ -293,6 +295,29 @@
       }
     } catch (e) {
       reportableToastError("Upgrade failed", e);
+    }
+  }
+
+  let pinBusy = $state(false);
+
+  /** Issue #90 — pin/unpin the current package via `brew pin`/`unpin`. Pinning
+   *  holds it back from `brew upgrade` (including greedy), so it drops out of
+   *  the update count. Non-streaming: resolves once brew flips the flag, then
+   *  reloads the list + detail so the pinned state and counts re-derive. */
+  async function doTogglePinned() {
+    if (!ui.selectedPackage || pinBusy) return;
+    const { name, kind } = ui.selectedPackage;
+    const nextPinned = !(pkg?.pinned ?? false);
+    pinBusy = true;
+    try {
+      await brewSetPinned(name, kind, nextPinned);
+      toast.success(nextPinned ? `Pinned ${name}` : `Unpinned ${name}`);
+      await packages.load(true);
+      if (ui.selectedPackage) loadDetail(ui.selectedPackage.name, ui.selectedPackage.kind);
+    } catch (e) {
+      reportableToastError(nextPinned ? "Pin failed" : "Unpin failed", e);
+    } finally {
+      pinBusy = false;
     }
   }
 
@@ -1734,6 +1759,21 @@
     </div>
 
     <footer class="actions">
+      {#if isInstalled}
+        <Button
+          variant="secondary"
+          onclick={doTogglePinned}
+          loading={pinBusy}
+          title={pkg?.pinned
+            ? "Unpin — let brew upgrade update this again"
+            : ui.selectedPackage?.kind === "cask"
+              ? "Pin — hold back from brew upgrade. A cask that self-updates may still update on its own."
+              : "Pin — hold back from brew upgrade"}
+        >
+          {#snippet icon()}{#if pkg?.pinned}<PinOff size={16} />{:else}<Pin size={16} />{/if}{/snippet}
+          {pkg?.pinned ? "Unpin" : "Pin"}
+        </Button>
+      {/if}
       {#if isInstalled && isOutdated}
         <Button variant="primary" onclick={doUpgrade}>
           {#snippet icon()}<ArrowUpCircle size={16} />{/snippet}

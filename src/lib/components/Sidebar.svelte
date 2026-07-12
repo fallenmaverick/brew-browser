@@ -118,7 +118,9 @@
 
   function badge(id: SidebarSection): string | null {
     if (id === "library") {
-      const o = packages.outdated.length;
+      // Nag badge counts only *upgradable* updates — pinned packages are
+      // intentionally held back (#90), so they don't contribute to the count.
+      const o = packages.outdatedUpgradable.length;
       return o > 0 ? String(o) : null;
     }
     if (id === "snapshots") {
