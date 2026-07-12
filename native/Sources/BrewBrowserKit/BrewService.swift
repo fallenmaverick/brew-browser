@@ -494,9 +494,6 @@ struct BrewService: Sendable {
         }
     }
 
-    /// Pinned formulae (held back from upgrade). Mirrors the "N pinned" chip.
-    func countPinned() async throws -> Int { try await lineCount(["list", "--pinned"]) }
-
     /// Count of running brew services (`brew services list`, status "started"/
     /// "scheduled"). Powers the Services sidebar badge. Best-effort: 0 on error.
     func countRunningServices() async -> Int {

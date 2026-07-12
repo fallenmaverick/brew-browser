@@ -38,6 +38,7 @@ enum LibraryFilter: String, CaseIterable, Identifiable, Hashable {
     case formulae   = "Formulae"
     case casks      = "Casks"
     case outdated   = "Outdated"
+    case pinned     = "Pinned"
     case manual     = "Manual"
     case dependency = "Dependency"
     case vulnerable = "Vulnerable"
@@ -198,6 +199,7 @@ public final class AppModel {
             case .formulae:   guard pkg.kind == .formula else { return nil }
             case .casks:      guard pkg.kind == .cask else { return nil }
             case .outdated:   guard outdatedSet.contains(pkg.name) else { return nil }
+            case .pinned:     guard pkg.pinned else { return nil }
             // Manual = installed on request; Dependency = a formula NOT on request
             // (casks are always on-request, so never appear under Dependency) (#3).
             case .manual:     guard pkg.installedOnRequest else { return nil }
@@ -238,6 +240,7 @@ public final class AppModel {
         case .formulae:   return installed.lazy.filter { $0.kind == .formula }.count
         case .casks:      return installed.lazy.filter { $0.kind == .cask }.count
         case .outdated:   return outdatedNames.count
+        case .pinned:     return installed.lazy.filter { $0.pinned }.count
         case .manual:     return installed.lazy.filter { $0.installedOnRequest }.count
         case .dependency: return installed.lazy.filter { $0.kind == .formula && !$0.installedOnRequest }.count
         case .vulnerable: return vulnerableCount
@@ -1271,14 +1274,16 @@ public final class AppModel {
         }
         async let leaves = try? brew.countLeaves()
         async let onRequest = try? brew.countOnRequest()
-        async let pinned = try? brew.countPinned()
         async let ver = brew.version()
         async let pfx = brew.prefix()
         async let services = brew.countRunningServices()
 
         leavesCount = await leaves ?? 0
         onRequestCount = await onRequest ?? 0
-        pinnedCount = await pinned ?? 0
+        // Count pins from the installed list (its top-level `pinned` covers
+        // formulae AND casks) rather than `brew list --pinned`, which only
+        // reports pinned formulae and would undercount pinned casks (#90).
+        pinnedCount = installed.lazy.filter { $0.pinned }.count
         brewVersion = await ver
         brewPrefix = await pfx
         runningServices = await services
