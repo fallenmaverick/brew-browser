@@ -137,5 +137,13 @@ if (failed) { console.error(`\n${failed} recipe(s) FAILED the contract.`); proce
 // CI "up to date" check (git diff) is meaningful and re-runs don't churn git.
 // Provenance lives per-recipe in `addedIn`. Bundles sorted by id for stable diffs.
 const bundles = { schemaVersion: 1, bundles: passing.sort((a, b) => a.id.localeCompare(b.id)) };
-writeFileSync(OUT, JSON.stringify(bundles, null, 2) + "\n");
-console.log(`\n✓ wrote ${OUT} (${passing.length} bundles).`);
+const json = JSON.stringify(bundles, null, 2) + "\n";
+// Write the canonical artifact AND both app-bundled copies so they never drift.
+// Each shell embeds its own copy at build time (Tauri include_str!, native Bundle.module).
+const TARGETS = [
+  OUT,
+  join(ROOT, "src-tauri", "data", "bundles.json"),
+  join(ROOT, "native", "Sources", "BrewBrowserKit", "Resources", "bundles.json"),
+];
+for (const t of TARGETS) writeFileSync(t, json);
+console.log(`\n✓ wrote ${passing.length} bundles to:\n  ${TARGETS.map((t) => t.replace(ROOT + "/", "")).join("\n  ")}`);
