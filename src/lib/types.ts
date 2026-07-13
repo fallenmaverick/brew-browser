@@ -1079,6 +1079,43 @@ export interface RecentChange {
   status: "succeeded" | "failed" | "canceled";
 }
 
+// =========================================================
+// Bundles M1 — capability profile + readiness
+// =========================================================
+
+/** Machine capabilities probed with zero installs by `system_profile`.
+ *  Mirrors the Rust `SystemProfile` struct (and the Swift one) byte-for-byte
+ *  on the wire. `ramGB`/`freeDiskGB` are whole GiB rounded to the nearest GB. */
+export interface SystemProfile {
+  ramGB: number;
+  arch: "apple-silicon" | "intel" | "linux";
+  chip: string;
+  cpuCores: number;
+  gpu: "metal" | "cuda" | "none" | "unknown";
+  freeDiskGB: number;
+  osVersion: string;
+}
+
+/** What a bundle needs from the host. Consumed by `readiness()`; `null`
+ *  requires means "runs anywhere" (always ready). */
+export interface BundleRequires {
+  minRamGB: number;
+  recommendedRamGB: number;
+  minDiskGB: number;
+  arch: "any" | "apple-silicon" | "intel" | "linux";
+  gpu: "none" | "preferred" | "required";
+}
+
+/** Readiness verdict for a bundle against a profile. `"blocked"` is advisory
+ *  — M3's UI still allows install behind a confirm. */
+export type ReadinessVerdict = "ready" | "marginal" | "blocked";
+
+/** A verdict plus a human-readable one-line reason. */
+export interface Readiness {
+  verdict: ReadinessVerdict;
+  reason: string;
+}
+
 /** Command-palette item — either a verb (action) or a package. */
 export type PaletteItem =
   | { kind: "command"; id: string; label: string; shortcut?: string; section?: string; run: () => void | Promise<void> }

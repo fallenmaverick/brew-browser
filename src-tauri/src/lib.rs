@@ -11,12 +11,14 @@ mod enrichment;
 mod error;
 mod github;
 mod state;
+mod system;
 mod trending;
 mod types;
 mod util;
 mod vulns;
 
 use commands::*;
+use system::profile::system_profile;
 
 // =============================================================
 // Phase 15 — Updater minisign public key
@@ -241,6 +243,7 @@ pub fn run() {
             vulns_scan_one,
             vulns_install_helper,
             vulns_invalidate,
+            system_profile,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

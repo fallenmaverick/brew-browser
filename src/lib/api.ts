@@ -49,6 +49,7 @@ import type {
   SearchResults,
   Service,
   Settings,
+  SystemProfile,
   SystemStatus,
   TrendingHistoryIndex,
   TrendingHistorySeries,
@@ -924,6 +925,15 @@ export function vulnsInvalidate(
   version: string,
 ): Promise<void> {
   return invoke<void>("vulns_invalidate", { kind, name, version });
+}
+
+/**
+ * Bundles M1 — probe the host's capabilities (RAM, arch, disk, GPU class)
+ * with zero installs. Small payload; the client-side `readiness()` gate in
+ * `$lib/util/readiness` consumes it against each bundle's `requires`.
+ */
+export function systemProfile(): Promise<SystemProfile> {
+  return invoke<SystemProfile>("system_profile");
 }
 
 // ============================================================
