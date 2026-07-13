@@ -54,7 +54,8 @@ Initial 6 recipes (tokens/taps verified 2026-07-12, all official taps): Local LL
 ## Release checklist (all gated to the user)
 - [x] Merge **#110** (GHSA references) into `main`. ✅ 2026-07-12 (main `6799e98`).
 - [x] Decide: **Bundles rides THIS release** (0.7.0/0.3.0), plan complete → `bundles/`. ✅ 2026-07-12.
-- [ ] Build Bundles: **M1** capability engine → **M2** contract+loader → **M3** browse+install → **M4** setup guidance → **M5** live-refresh+contributions. Each its own branch, both shells green.
+- [x] Build Bundles **M1–M4 + M5 pipeline** (branch `feat/bundles`, both shells, 2026-07-13): capability engine, recipe contract + 6 recipes + validator, browse/install UI, setup guidance, CI + CONTRIBUTING. Gate: Tauri cargo 681 / svelte 0 / vitest 53 · Native 187 tests · recipes 6/6. Both apps launch clean with the Bundles section; no unresolved TODOs in new code.
+- [ ] **M5 live-refresh CLIENT — DEFERRED** (opt-in host fetch of `bundles.json`). Build alongside the host `/bundles/bundles.json` endpoint so it's end-to-end verifiable (mirrors how live-enrichment was staged). Contribution pipeline (CI/validator/CONTRIBUTING) is done; only the runtime live-fetch is deferred.
 - [ ] Version bumps: `package.json` / `Cargo.toml` / `tauri.conf.json` → `0.7.0`; native `build-app.sh` CFBundleShortVersionString → `0.3.0`. Docs (README, BUILD.md, release-notes/unreleased.md, native/README) consistent.
 - [ ] Live-verify on main: pin/unpin (formula + cask), Library bottom bar + Pinned tab, list-scale, install-trend, vulnerable-footer nav, GHSA enrichment.
 - [ ] Build + notarize both shells (Tauri arm64 + x64 dmgs + updater `.app.tar.gz`; native arm64 + x64 dmgs). Recipe: [build-deployment / RELEASE-BUILD GOTCHAS in project-resume-state].
