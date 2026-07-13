@@ -25,7 +25,10 @@ const BUNDLES_JSON: &str = include_str!("../../data/bundles.json");
 /// recipe fails the whole `Vec<Bundle>` decode) do we fall back to a per-entry
 /// tolerant parse that salvages the good recipes and skips (logs) the bad one.
 /// A completely unparseable file yields an empty list.
-fn parse_bundles(json: &str) -> Vec<Bundle> {
+///
+/// `pub(crate)` so the live-refresh path (`crate::bundles_live`) reuses the
+/// exact same tolerant decode on the host-served payload.
+pub(crate) fn parse_bundles(json: &str) -> Vec<Bundle> {
     if let Ok(file) = serde_json::from_str::<BundlesFile>(json) {
         return file.bundles;
     }

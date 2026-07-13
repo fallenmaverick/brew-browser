@@ -474,6 +474,21 @@ private struct TrendingSettings: View {
                         .font(.caption).foregroundStyle(.orange)
                 }
             }
+
+            SwiftUI.Section {
+                Toggle("Refresh bundles from the project host", isOn: Binding(
+                    get: { settings.liveBundlesEnabled },
+                    set: { settings.liveBundlesEnabled = $0; try? settings.save() }
+                ))
+                .disabled(offline || settings.isCorrupt)
+                Text("brew-browser ships with a built-in set of curated Bundles (Local LLMs, Media Toolkit, …). When on, it refreshes that list from brew-browser.zerologic.com/bundles/bundles.json so new or updated recipes arrive without an app update. No package names are sent — it's a single static file fetch. Same first-party host as Enhanced Trending / Enrichment, a distinct /bundles/ path; the bundled copy is kept on any error.")
+                    .font(.caption).foregroundStyle(.secondary)
+                if offline {
+                    Label("Offline Mode is on — this toggle is locked off.",
+                          systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption).foregroundStyle(.orange)
+                }
+            }
         }
         .formStyle(.grouped)
         .padding(20)

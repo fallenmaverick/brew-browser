@@ -5,6 +5,7 @@
 //! in `commands::*`.
 
 mod brew;
+mod bundles_live;
 mod catalog;
 mod commands;
 mod enrichment;
@@ -17,6 +18,7 @@ mod types;
 mod util;
 mod vulns;
 
+use bundles_live::bundles_live;
 use commands::*;
 use system::profile::system_profile;
 
@@ -246,6 +248,7 @@ pub fn run() {
             system_profile,
             bundles,
             brew_install_bundle,
+            bundles_live,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

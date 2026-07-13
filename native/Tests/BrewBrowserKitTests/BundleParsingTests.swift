@@ -130,4 +130,65 @@ struct BundleParsingTests {
             #expect(c.external == true, "command step '\(c.run ?? "")' must be external:true (contract)")
         }
     }
+
+    // MARK: - Live refresh (M5) parseLive fail-soft contract
+
+    /// A payload whose `schemaVersion` is newer than we support → `nil`, so the
+    /// caller keeps the bundled copy rather than mis-parsing an unknown format.
+    @Test func parseLiveRefusesNewerSchema() {
+        let json = """
+        { "schemaVersion": 2, "bundles": [
+          { "id": "future", "name": "Future", "tagline": "t", "category": "Data",
+            "packages": [ { "name": "redis", "kind": "formula" } ] }
+        ] }
+        """
+        #expect(BundleCatalog.parseLive(Data(json.utf8)) == nil)
+    }
+
+    /// A valid same-schema payload → the decoded bundles (the live set replaces
+    /// the bundled one).
+    @Test func parseLiveAcceptsSupportedSchema() throws {
+        let json = """
+        { "schemaVersion": 1, "bundles": [
+          { "id": "live-a", "name": "Live A", "tagline": "t", "category": "Media",
+            "packages": [ { "name": "ffmpeg", "kind": "formula" } ] },
+          { "id": "live-b", "name": "Live B", "tagline": "t", "category": "Data",
+            "packages": [ { "name": "redis", "kind": "formula" } ] }
+        ] }
+        """
+        let live = try #require(BundleCatalog.parseLive(Data(json.utf8)))
+        #expect(live.map(\.id) == ["live-a", "live-b"])
+    }
+
+    /// A missing `schemaVersion` is treated as compatible (parses).
+    @Test func parseLiveTreatsMissingSchemaAsCompatible() throws {
+        let json = """
+        { "bundles": [
+          { "id": "no-ver", "name": "No Ver", "tagline": "t", "category": "Development",
+            "packages": [ { "name": "node", "kind": "formula" } ] }
+        ] }
+        """
+        let live = try #require(BundleCatalog.parseLive(Data(json.utf8)))
+        #expect(live.map(\.id) == ["no-ver"])
+    }
+
+    /// Malformed top-level JSON → `nil` (keep the bundled copy).
+    @Test func parseLiveFallsBackOnMalformed() {
+        #expect(BundleCatalog.parseLive(Data("{ not json".utf8)) == nil)
+    }
+
+    /// Within a supported-schema payload, a single malformed recipe is still
+    /// dropped (lossy), matching the bundled `parse` behavior.
+    @Test func parseLiveIsLossyWithinSupportedSchema() throws {
+        let json = """
+        { "schemaVersion": 1, "bundles": [
+          { "id": "ok", "name": "OK", "tagline": "t", "category": "Data",
+            "packages": [ { "name": "redis", "kind": "formula" } ] },
+          { "name": "no id", "tagline": "broken", "category": "Data",
+            "packages": [ { "name": "x", "kind": "formula" } ] }
+        ] }
+        """
+        let live = try #require(BundleCatalog.parseLive(Data(json.utf8)))
+        #expect(live.map(\.id) == ["ok"])
+    }
 }

@@ -678,6 +678,15 @@ export interface Settings {
       Trending, new `…/enrichment/*` path; only the viewed package name is sent.
       Suppressed by Offline Mode regardless. */
   liveEnrichmentEnabled: boolean;
+
+  /** v0.7.0 — opt-in live refresh of the curated Bundles recipe set. When on,
+      the app fetches the latest `bundles.json` from
+      `brew-browser.zerologic.com/bundles/bundles.json` (one static-file GET, no
+      package names sent) and replaces its list on a non-empty success; any
+      error keeps the bundled copy. Off by default; same first-party host as
+      Live enrichment, new `…/bundles/*` path. Suppressed by Offline Mode
+      regardless. Shared settings key with the native shell. */
+  liveBundlesEnabled: boolean;
 }
 
 /** Defaults matching the Rust `Settings::default()`. Used when seeding
@@ -707,6 +716,9 @@ export const SETTINGS_DEFAULTS: Settings = {
   // Opt-in live refresh of categories + descriptions. Off by default; same
   // first-party host as Enhanced Trending, new /enrichment/* path.
   liveEnrichmentEnabled: false,
+  // v0.7.0 — opt-in live refresh of the Bundles recipe set. Off by default;
+  // same first-party host, new /bundles/* path.
+  liveBundlesEnabled: false,
 };
 
 // =========================================================

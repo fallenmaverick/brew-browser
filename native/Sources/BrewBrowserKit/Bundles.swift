@@ -149,6 +149,11 @@ private struct BundleFile: Decodable {
 /// value type (mirrors the `CategoryCatalog`/`EnrichmentCatalog` bundled-data
 /// loaders); call `load()` off the main thread from `AppModel.loadBundledData()`.
 public struct BundleCatalog: Sendable {
+    /// The `bundles.json` `schemaVersion` this build understands. A live payload
+    /// with a NEWER schema is refused (the app keeps its bundled copy) rather
+    /// than risk mis-parsing a format it doesn't know — fail-soft forward-compat.
+    static let supportedSchemaVersion = 1
+
     public init() {}
 
     /// Decode the bundled catalog. Returns `[]` if the resource is missing or
@@ -169,5 +174,71 @@ public struct BundleCatalog: Sendable {
             return []
         }
         return file.bundles.compactMap { try? $0.result.get() }
+    }
+
+    /// Parse a LIVE-fetched payload (M5). Distinct from `parse` in that it can
+    /// say "don't use this" by returning `nil`, so the caller keeps the bundled
+    /// copy: `nil` when the top-level JSON is malformed OR its `schemaVersion` is
+    /// newer than `supportedSchemaVersion`. Otherwise it lossily decodes the
+    /// recipes (skipping malformed ones), same as `parse`. A missing
+    /// `schemaVersion` is treated as compatible.
+    static func parseLive(_ data: Data) -> [BrewBundle]? {
+        guard let file = try? JSONDecoder().decode(BundleFile.self, from: data) else {
+            return nil
+        }
+        if let version = file.schemaVersion, version > supportedSchemaVersion {
+            return nil
+        }
+        return file.bundles.compactMap { try? $0.result.get() }
+    }
+}
+
+/// Opt-in live fetch for the Bundles catalog (M5) — the native mirror of the
+/// enrichment/trending live clients (`EnrichmentLiveService`,
+/// `TrendingHistoryService`): an actor, soft-fail everywhere, pure transport.
+/// The caller (`AppModel`) gates on `settings.liveBundlesAllowed` (opt-in +
+/// network) before invoking. The base host is the same first-party serving
+/// domain the enrichment/trending clients use (already in committed source);
+/// only the `/bundles/` path differs. Injectable `baseURL`/`session` keep it
+/// testable and keep the host out of any hardcoded string beyond this default.
+public actor BundleLiveService {
+    private let baseURL: URL
+    private let session: URLSession
+
+    public init(
+        baseURL: URL = URL(string: "https://brew-browser.zerologic.com/bundles/")!,
+        session: URLSession? = nil
+    ) {
+        self.baseURL = baseURL
+        if let session {
+            self.session = session
+        } else {
+            let config = URLSessionConfiguration.ephemeral
+            config.timeoutIntervalForRequest = 8
+            config.timeoutIntervalForResource = 15
+            self.session = URLSession(configuration: config)
+        }
+    }
+
+    /// GET `bundles/bundles.json` → tolerant `[BrewBundle]`. Returns `nil` on any
+    /// failure (offline, 404 — the endpoint may not exist yet, network error,
+    /// malformed JSON, or a newer-than-supported schema) so the caller keeps the
+    /// bundled copy.
+    func fetchBundles() async -> [BrewBundle]? {
+        let url = baseURL.appendingPathComponent("bundles.json", isDirectory: false)
+        guard let data = await fetchData(url) else { return nil }
+        return BundleCatalog.parseLive(data)
+    }
+
+    private func fetchData(_ url: URL) async -> Data? {
+        do {
+            let (data, response) = try await session.data(from: url)
+            if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+                return nil
+            }
+            return data
+        } catch {
+            return nil
+        }
     }
 }

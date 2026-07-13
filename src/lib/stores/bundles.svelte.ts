@@ -7,9 +7,11 @@
  * bundles + profile once per process and caches the result.
  */
 
-import { bundles as fetchBundles, systemProfile } from "$lib/api";
+import { bundles as fetchBundles, bundlesLive, systemProfile } from "$lib/api";
+import { settings } from "$lib/stores/settings.svelte";
 import type { Bundle, Readiness, SystemProfile } from "$lib/types";
 import { readiness } from "$lib/util/readiness";
+import { shouldReplaceWithLive } from "$lib/util/liveBundles";
 
 /** localStorage key that overrides the probed RAM so Marginal/Blocked states
  *  are reachable on a big dev box (e.g. the 128 GB Mac). Set e.g.
@@ -37,7 +39,7 @@ class BundlesStore {
 
     this.loading = true;
     this.error = null;
-    this.loadPromise = (async () => {
+    const p = (async () => {
       try {
         const [list, profile] = await Promise.all([fetchBundles(), systemProfile()]);
         this.list = list;
@@ -50,7 +52,43 @@ class BundlesStore {
         this.loadPromise = null;
       }
     })();
-    return this.loadPromise;
+    this.loadPromise = p;
+    // M5 — the bundled list shows as soon as `p` settles; if the user opted
+    // in, silently refresh from the project host in the background and replace
+    // on a non-empty success. Fire-and-forget so a slow/absent endpoint never
+    // delays the cards.
+    void p.then(() => this.refreshLive());
+    return p;
+  }
+
+  /** Opt-in gate for the live refresh: the toggle on AND not in Offline Mode.
+   *  The backend re-checks both (paranoid/offline + toggle) — this just avoids
+   *  a guaranteed-rejected round-trip. */
+  private get liveAllowed(): boolean {
+    return (
+      settings.effective.liveBundlesEnabled === true &&
+      settings.effective.paranoidMode !== true
+    );
+  }
+
+  /**
+   * Pull the latest `bundles.json` from the project host and replace the list
+   * on a non-empty success. Soft-fail: any error (disabled, network, 404,
+   * parse, newer-than-supported schema) or an EMPTY payload keeps the bundled
+   * copy — the shipped set is never wiped. Returns true if it replaced.
+   */
+  async refreshLive(): Promise<boolean> {
+    if (!this.liveAllowed) return false;
+    try {
+      const live = await bundlesLive();
+      if (shouldReplaceWithLive(live)) {
+        this.list = live;
+        return true;
+      }
+      return false; // empty payload → keep bundled
+    } catch {
+      return false; // keep bundled on any failure
+    }
   }
 
   /** Apply the debug RAM override to a freshly-probed profile, if set + valid. */

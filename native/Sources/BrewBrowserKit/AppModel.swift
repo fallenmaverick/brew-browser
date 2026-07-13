@@ -406,6 +406,25 @@ public final class AppModel {
         if let pkg = detailPackage, settings.aiFeaturesVisible {
             detailEnrichment = enrichmentEntry(for: pkg.name)
         }
+        // M5: if the user opted in, refresh the Bundles catalog from the project
+        // host in the background — never blocks first paint, silently keeps the
+        // bundled copy on any failure.
+        if settings.liveBundlesAllowed {
+            Task { await refreshLiveBundles() }
+        }
+    }
+
+    /// Opt-in live Bundles refresh (M5). Fetches `bundles/bundles.json` from the
+    /// project host and REPLACES `bundles` on success. Any failure (offline,
+    /// 404, network, malformed, or a newer-than-supported schema) leaves the
+    /// bundled catalog untouched. A valid-but-empty payload is ignored too, so a
+    /// blank file can't wipe the six shipped recipes. Gated on
+    /// `settings.liveBundlesAllowed` (opt-in + network).
+    func refreshLiveBundles() async {
+        guard settings.liveBundlesAllowed else { return }
+        if let live = await bundleLive.fetchBundles(), !live.isEmpty {
+            bundles = live
+        }
     }
 
     func loadCatalog() async {
@@ -1036,6 +1055,8 @@ public final class AppModel {
 
     // Opt-in live enrichment overlay (mirrors the Tauri store overlay).
     private let enrichmentLive = EnrichmentLiveService()
+    // Opt-in live Bundles-catalog refresh (M5), gated on settings.liveBundlesAllowed.
+    private let bundleLive = BundleLiveService()
     private var liveEnrichment: [String: EnrichmentEntry] = [:]
     private var liveEnrichmentAttempted: Set<String> = []
     private var liveCategoriesVersion: String = ""

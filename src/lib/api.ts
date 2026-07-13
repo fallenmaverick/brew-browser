@@ -949,6 +949,18 @@ export function bundles(): Promise<Bundle[]> {
 }
 
 /**
+ * Bundles M5 — opt-in live refresh of the recipe set from the project host
+ * (`brew-browser.zerologic.com/bundles/bundles.json`, one static-file GET).
+ * Gated backend-side on the `liveBundlesEnabled` toggle + network (paranoid/
+ * offline). Rejects on any failure (disabled, network, 404, parse, or a
+ * newer-than-supported schema) — callers keep the bundled copy and replace
+ * only on a non-empty result.
+ */
+export function bundlesLive(): Promise<Bundle[]> {
+  return invoke<Bundle[]>("bundles_live");
+}
+
+/**
  * Bundles M3 — install every package in a bundle. Mirrors `brewUpgradeMany`:
  * one streamed job (into Activity) that installs the set, then the caller
  * reloads `packages`. Because brew's `--formula`/`--cask` flags can't be mixed
