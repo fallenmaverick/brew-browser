@@ -1,0 +1,27 @@
+{
+  "id": "image-gen",
+  "name": "Image Generation",
+  "tagline": "Local Stable Diffusion / Flux with ComfyUI",
+  "category": "AI",
+  "icon": "image",
+  "packages": [
+    { "name": "comfy", "kind": "cask" }
+  ],
+  "requires": { "minRamGB": 16, "recommendedRamGB": 24, "minDiskGB": 30, "arch": "apple-silicon", "gpu": "required" },
+  "capabilityNotes": {
+    "16": "SDXL comfortably; Flux fp8 with offloading",
+    "24": "Flux fp8 comfortably",
+    "48": "Flux fp16"
+  },
+  "setup": [
+    { "kind": "note", "text": "Launch ComfyUI, then download a checkpoint model — it is NOT installed by brew (SDXL ~7 GB, Flux ~24 GB)." },
+    { "kind": "command", "run": "open -a ComfyUI", "label": "Launch ComfyUI (you run this)", "external": true }
+  ],
+  "caveats": "Installs ComfyUI only; models are large downloads you fetch yourself. On Apple Silicon, generation is roughly 2–4× slower per image than a comparable NVIDIA GPU.",
+  "links": [
+    { "label": "ComfyUI (GitHub)", "url": "https://github.com/comfyanonymous/ComfyUI" },
+    { "label": "comfy.org", "url": "https://www.comfy.org" }
+  ],
+  "maintainer": "brew-browser",
+  "addedIn": "0.7.0"
+}

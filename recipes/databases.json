@@ -1,0 +1,23 @@
+{
+  "id": "databases",
+  "name": "Local Databases",
+  "tagline": "PostgreSQL + Redis, managed as services",
+  "category": "Data",
+  "icon": "database",
+  "packages": [
+    { "name": "postgresql@16", "kind": "formula" },
+    { "name": "redis", "kind": "formula" }
+  ],
+  "requires": { "minRamGB": 4, "recommendedRamGB": 8, "minDiskGB": 5, "arch": "any", "gpu": "none" },
+  "setup": [
+    { "kind": "service", "service": "postgresql@16", "label": "Start PostgreSQL" },
+    { "kind": "service", "service": "redis", "label": "Start Redis" }
+  ],
+  "caveats": "Databases grow with your data. Manage start/stop from the Services tab.",
+  "links": [
+    { "label": "PostgreSQL", "url": "https://www.postgresql.org" },
+    { "label": "Redis", "url": "https://redis.io" }
+  ],
+  "maintainer": "brew-browser",
+  "addedIn": "0.7.0"
+}

@@ -1,0 +1,21 @@
+{
+  "id": "web-dev",
+  "name": "Web Dev Starter",
+  "tagline": "Node.js + pnpm — the modern JS toolchain",
+  "category": "Development",
+  "icon": "code",
+  "packages": [
+    { "name": "node", "kind": "formula" },
+    { "name": "pnpm", "kind": "formula" }
+  ],
+  "setup": [
+    { "kind": "command", "run": "node -v && pnpm -v", "label": "Verify the toolchain (you run this)", "external": true }
+  ],
+  "caveats": "Installs the runtimes; project dependencies are per-project (pnpm install).",
+  "links": [
+    { "label": "Node.js", "url": "https://nodejs.org" },
+    { "label": "pnpm", "url": "https://pnpm.io" }
+  ],
+  "maintainer": "brew-browser",
+  "addedIn": "0.7.0"
+}

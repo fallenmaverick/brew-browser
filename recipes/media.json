@@ -1,0 +1,23 @@
+{
+  "id": "media",
+  "name": "Media Toolkit",
+  "tagline": "Transcode, download, and play — ffmpeg, yt-dlp, mpv",
+  "category": "Media",
+  "icon": "clapperboard",
+  "packages": [
+    { "name": "ffmpeg", "kind": "formula" },
+    { "name": "yt-dlp", "kind": "formula" },
+    { "name": "mpv", "kind": "formula" }
+  ],
+  "setup": [
+    { "kind": "command", "run": "ffmpeg -version", "label": "Verify ffmpeg (you run this)", "external": true }
+  ],
+  "caveats": "Command-line tools. Lightweight; runs on any supported Mac or Linux.",
+  "links": [
+    { "label": "FFmpeg", "url": "https://ffmpeg.org" },
+    { "label": "yt-dlp", "url": "https://github.com/yt-dlp/yt-dlp" },
+    { "label": "mpv", "url": "https://mpv.io" }
+  ],
+  "maintainer": "brew-browser",
+  "addedIn": "0.7.0"
+}

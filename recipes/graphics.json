@@ -1,0 +1,20 @@
+{
+  "id": "graphics",
+  "name": "Graphics & Design",
+  "tagline": "Vector, raster, and digital painting — Inkscape, GIMP, Krita",
+  "category": "Graphics",
+  "icon": "palette",
+  "packages": [
+    { "name": "inkscape", "kind": "cask" },
+    { "name": "gimp", "kind": "cask" },
+    { "name": "krita", "kind": "cask" }
+  ],
+  "caveats": "Three full desktop apps (~2–3 GB combined). Runs on any supported Mac.",
+  "links": [
+    { "label": "Inkscape", "url": "https://inkscape.org" },
+    { "label": "GIMP", "url": "https://www.gimp.org" },
+    { "label": "Krita", "url": "https://krita.org" }
+  ],
+  "maintainer": "brew-browser",
+  "addedIn": "0.7.0"
+}
