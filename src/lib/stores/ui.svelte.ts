@@ -75,6 +75,7 @@ const SECTION_TITLES: Record<SidebarSection, string> = {
   snapshots: "Snapshots",
   services:  "Services",
   activity:  "Activity",
+  bundles:   "Bundles",
 };
 
 class UiStore {

@@ -11,6 +11,7 @@ enum Section: String, CaseIterable, Identifiable, Hashable {
     case snapshots = "Snapshots"
     case services  = "Services"
     case activity  = "Activity"
+    case bundles   = "Bundles"
 
     var id: String { rawValue }
 
@@ -24,6 +25,7 @@ enum Section: String, CaseIterable, Identifiable, Hashable {
         case .snapshots: return "camera"
         case .services:  return "gearshape.2"
         case .activity:  return "list.bullet.rectangle"
+        case .bundles:   return "square.stack.3d.up"
         }
     }
 }
@@ -394,11 +396,12 @@ public final class AppModel {
     func loadBundledData() async {
         if bundledDataLoaded { return }
         bundledDataLoaded = true
-        let (cat, enr) = await Task.detached(priority: .userInitiated) {
-            (CategoryCatalog.loadBundled(), EnrichmentCatalog.loadBundled())
+        let (cat, enr, bnd) = await Task.detached(priority: .userInitiated) {
+            (CategoryCatalog.loadBundled(), EnrichmentCatalog.loadBundled(), BundleCatalog().load())
         }.value
         categoryCatalog = cat
         enrichment = enr
+        bundles = bnd
         if !installed.isEmpty { categories = cat?.breakdown(installed: installed) ?? [] }
         if let pkg = detailPackage, settings.aiFeaturesVisible {
             detailEnrichment = enrichmentEntry(for: pkg.name)
@@ -721,6 +724,7 @@ public final class AppModel {
         let map: [Int: Section] = [
             0: .dashboard, 1: .library, 2: .discover,
             3: .trending, 4: .snapshots, 5: .services, 6: .activity,
+            7: .bundles,
         ]
         if let s = map[n] { selection = s }
     }
@@ -810,6 +814,23 @@ public final class AppModel {
     var brewVersion = "—"
     var brewPrefix = "/opt/homebrew"
     var categories: [CategoryBreakdown] = []
+    /// Curated Bundles catalog (M2), parsed from the bundled `bundles.json` by
+    /// `loadBundledData()`. Per-bundle readiness (M3) is computed at render time
+    /// via `readiness(for:)` against `systemProfile`.
+    var bundles: [BrewBundle] = []
+
+    /// Host capability snapshot (M1), read once at construction. Feeds
+    /// `readiness(for:)` so the Bundles UI can gate recipes against this machine.
+    /// `SystemProfile.detect()` honors `BREWBROWSER_FAKE_RAM_GB`, so a debug run
+    /// can force Marginal/Blocked states on a high-RAM dev Mac.
+    var systemProfile = SystemProfile.detect()
+
+    /// Capability verdict for a bundle on this host (M3). Pure — just routes the
+    /// bundle's `requires`/`capabilityNotes` and the cached profile through the
+    /// M1 readiness function.
+    func readiness(for b: BrewBundle) -> Readiness {
+        BundleReadiness.readiness(b.requires, b.capabilityNotes, systemProfile)
+    }
     var runningServices = 0
     var dashboardLoaded = false
     /// `brew outdated --json=v2` is slow (~4s) and `du -sk` can lag, so they no
@@ -1904,6 +1925,32 @@ public final class AppModel {
         let args = BrewArgs.install(pkg.name, kind: pkg.kind, force: force, adopt: adopt)
         let ok = await startJob("Installing \(pkg.name)", args: args, startedAt: Date().timeIntervalSince1970)
         if ok, let pkg = detailPackage { await loadDetail(pkg) }
+    }
+
+    // MARK: - Bundles (M3)
+
+    /// Install every not-yet-installed package in a bundle (M3 "Install all").
+    /// brew rejects a single interleaved `--formula … --cask …` invocation
+    /// ("Options --cask and --formulae are mutually exclusive"), so
+    /// `BrewArgs.installBundle` splits the set into at most two per-kind groups
+    /// (formulae, then casks); each is ONE streamed Activity job — not N.
+    /// Already-installed packages are filtered out first (install is idempotent,
+    /// but this keeps the job to just the missing pieces). `startJob` refreshes
+    /// the library on success, so per-package installed state flips afterward.
+    func installBundle(_ b: BrewBundle) async {
+        let pending = b.packages.filter {
+            let kind = InstalledPackage.Kind(rawValue: $0.kind) ?? .formula
+            return !isPackageInstalled(token: $0.name, kind: kind)
+        }
+        let groups = BrewArgs.installBundle(pending)
+        guard !groups.isEmpty else { return }
+        let label = "Installing \(b.name)"
+        for args in groups {
+            let ok = await startJob(label, args: args, startedAt: Date().timeIntervalSince1970)
+            // Stop before the second (cask) job if the formula job failed — the
+            // failure is already surfaced in Activity; don't pile a second error on.
+            if !ok { break }
+        }
     }
 
     // MARK: - Bulk actions (Dashboard Updates card)

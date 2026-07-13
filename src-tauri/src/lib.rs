@@ -244,6 +244,8 @@ pub fn run() {
             vulns_install_helper,
             vulns_invalidate,
             system_profile,
+            bundles,
+            brew_install_bundle,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

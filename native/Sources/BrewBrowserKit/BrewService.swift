@@ -165,6 +165,23 @@ enum BrewArgs {
         args.append(name)
         return args
     }
+
+    /// Argv groups for a bundle "Install all" (M3). brew rejects mixing
+    /// `--formula` and `--cask` in one invocation ("Options --cask and
+    /// --formulae are mutually exclusive"), but takes many same-kind names at
+    /// once — so we emit at most two groups: `["install","--formula",f1,f2,…]`
+    /// then `["install","--cask",c1,c2,…]`. A group is omitted when it has no
+    /// members (formulae-only bundles → one group; empty input → no groups).
+    /// Each group is run as its own streaming Activity job by
+    /// `AppModel.installBundle(_:)`. Input order is preserved within each kind.
+    static func installBundle(_ packages: [BundlePackage]) -> [[String]] {
+        let formulae = packages.filter { $0.kind != "cask" }.map(\.name)
+        let casks    = packages.filter { $0.kind == "cask" }.map(\.name)
+        var groups: [[String]] = []
+        if !formulae.isEmpty { groups.append(["install", "--formula"] + formulae) }
+        if !casks.isEmpty    { groups.append(["install", "--cask"] + casks) }
+        return groups
+    }
 }
 
 struct BrewService: Sendable {

@@ -19,6 +19,8 @@ import { invoke, Channel } from "@tauri-apps/api/core";
 import type {
   BrewEnvironment,
   Brewfile,
+  Bundle,
+  BundlePackage,
   BrewfileCheckReport,
   BrewfileId,
   BrewfileSummary,
@@ -934,6 +936,34 @@ export function vulnsInvalidate(
  */
 export function systemProfile(): Promise<SystemProfile> {
   return invoke<SystemProfile>("system_profile");
+}
+
+/**
+ * Bundles M2 — load the curated bundle recipes embedded in the app. A single
+ * malformed recipe is skipped backend-side, so this always resolves with the
+ * valid ones (never throws for a bad recipe). Readiness is computed
+ * client-side via `$lib/util/readiness` against `systemProfile()`.
+ */
+export function bundles(): Promise<Bundle[]> {
+  return invoke<Bundle[]>("bundles");
+}
+
+/**
+ * Bundles M3 — install every package in a bundle. Mirrors `brewUpgradeMany`:
+ * one streamed job (into Activity) that installs the set, then the caller
+ * reloads `packages`. Because brew's `--formula`/`--cask` flags can't be mixed
+ * in one invocation, a bundle with both kinds streams as two sequential steps
+ * (formulae, then casks) — each emits its own `started`→`exit` lifecycle on
+ * this channel, so the handler must cope with more than one `jobId`.
+ */
+export function brewInstallBundle(
+  packages: BundlePackage[],
+  onEvent: (evt: BrewStreamEvent) => void,
+): Promise<JobResult> {
+  return invoke<JobResult>("brew_install_bundle", {
+    packages,
+    onEvent: makeChannel(onEvent),
+  });
 }
 
 // ============================================================

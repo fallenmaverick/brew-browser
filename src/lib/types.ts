@@ -1011,7 +1011,8 @@ export type SidebarSection =
   | "trending"
   | "snapshots"
   | "services"
-  | "activity";
+  | "activity"
+  | "bundles";
 
 export type ThemePreference = "light" | "dark" | "system";
 
@@ -1114,6 +1115,59 @@ export type ReadinessVerdict = "ready" | "marginal" | "blocked";
 export interface Readiness {
   verdict: ReadinessVerdict;
   reason: string;
+}
+
+// =========================================================
+// Bundles M2 — curated recipe contract
+// =========================================================
+
+/** One package inside a bundle. `kind` is a plain string (not `PackageKind`)
+ *  so an unexpected value in a live-refreshed recipe degrades gracefully.
+ *  Mirrors the Rust `BundlePackage`. */
+export interface BundlePackage {
+  name: string;
+  kind: string;
+}
+
+/** A post-install setup step. Which fields apply depends on `kind`
+ *  (`service` | `open` | `reveal` | `command` | `note`); all but `kind` are
+ *  optional. `command` steps always carry `external: true` — the app never
+ *  auto-runs a shell. Mirrors the Rust `SetupStep`. */
+export interface SetupStep {
+  kind: string;
+  service?: string;
+  label?: string;
+  url?: string;
+  path?: string;
+  run?: string;
+  external?: boolean;
+  text?: string;
+}
+
+/** An external reference link (docs, homepage, source). */
+export interface BundleLink {
+  label: string;
+  url: string;
+}
+
+/** A curated bundle recipe. See `recipes/recipe.schema.json` for the authoring
+ *  contract. `capabilityNotes` maps a RAM-tier (integer-as-string key) to a
+ *  human note the readiness gate surfaces. Mirrors the Rust `Bundle`. */
+export interface Bundle {
+  id: string;
+  name: string;
+  tagline: string;
+  category: string;
+  icon?: string | null;
+  packages: BundlePackage[];
+  tap?: string | null;
+  requires?: BundleRequires | null;
+  capabilityNotes: Record<string, string>;
+  setup: SetupStep[];
+  caveats?: string | null;
+  links: BundleLink[];
+  maintainer?: string | null;
+  addedIn?: string | null;
 }
 
 /** Command-palette item — either a verb (action) or a package. */

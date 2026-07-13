@@ -9,6 +9,7 @@
   import Snapshots from "$lib/components/Snapshots.svelte";
   import Services from "$lib/components/Services.svelte";
   import ActivityHistory from "$lib/components/ActivityHistory.svelte";
+  import Bundles from "$lib/components/Bundles.svelte";
   import OnboardingView from "$lib/components/OnboardingView.svelte";
   import PackageDetail from "$lib/components/PackageDetail.svelte";
   import ResizeHandle from "$lib/components/ResizeHandle.svelte";
@@ -79,8 +80,8 @@
       return;
     }
 
-    // Cmd+0..6: section nav (0 = dashboard / home)
-    if (meta && ["0","1","2","3","4","5","6"].includes(e.key)) {
+    // Cmd+0..7: section nav (0 = dashboard / home)
+    if (meta && ["0","1","2","3","4","5","6","7"].includes(e.key)) {
       e.preventDefault();
       const map: Record<string, SidebarSection> = {
         "0": "dashboard",
@@ -90,6 +91,7 @@
         "4": "snapshots",
         "5": "services",
         "6": "activity",
+        "7": "bundles",
       };
       ui.setSection(map[e.key]);
       return;
@@ -213,6 +215,8 @@
               <Services />
             {:else if ui.section === "activity"}
               <ActivityHistory />
+            {:else if ui.section === "bundles"}
+              <Bundles />
             {/if}
           </div>
         {/key}

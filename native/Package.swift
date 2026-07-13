@@ -50,6 +50,11 @@ let package = Package(
             resources: [
                 .copy("Resources/categories.json"),
                 .copy("Resources/enrichment.json"),
+                // Curated Bundles catalog (M2) — the six first-party recipes,
+                // generated from recipes/*.json by scripts/validate-recipes.mjs.
+                // Same artifact the Tauri app bundles; parsed at launch by
+                // BundleCatalog (Bundles.swift) via Bundle.module, tolerant/lossy.
+                .copy("Resources/bundles.json"),
                 // GitHub Octocat mark (vector PDF, Primer/Octicons MIT). Rendered
                 // as a template image in the toolbar's "connected" chip.
                 .copy("Resources/github-mark.pdf"),

@@ -265,6 +265,8 @@ public struct ContentView: View {
             SnapshotsView(model: model)
         case .services:
             ServicesView(model: model)
+        case .bundles:
+            BundlesView(model: model)
         }
     }
 }

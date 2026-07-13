@@ -1,0 +1,287 @@
+{
+  "schemaVersion": 1,
+  "bundles": [
+    {
+      "id": "databases",
+      "name": "Local Databases",
+      "tagline": "PostgreSQL + Redis, managed as services",
+      "category": "Data",
+      "icon": "database",
+      "packages": [
+        {
+          "name": "postgresql@16",
+          "kind": "formula"
+        },
+        {
+          "name": "redis",
+          "kind": "formula"
+        }
+      ],
+      "requires": {
+        "minRamGB": 4,
+        "recommendedRamGB": 8,
+        "minDiskGB": 5,
+        "arch": "any",
+        "gpu": "none"
+      },
+      "setup": [
+        {
+          "kind": "service",
+          "service": "postgresql@16",
+          "label": "Start PostgreSQL"
+        },
+        {
+          "kind": "service",
+          "service": "redis",
+          "label": "Start Redis"
+        }
+      ],
+      "caveats": "Databases grow with your data. Manage start/stop from the Services tab.",
+      "links": [
+        {
+          "label": "PostgreSQL",
+          "url": "https://www.postgresql.org"
+        },
+        {
+          "label": "Redis",
+          "url": "https://redis.io"
+        }
+      ],
+      "maintainer": "brew-browser",
+      "addedIn": "0.7.0"
+    },
+    {
+      "id": "graphics",
+      "name": "Graphics & Design",
+      "tagline": "Vector, raster, and digital painting — Inkscape, GIMP, Krita",
+      "category": "Graphics",
+      "icon": "palette",
+      "packages": [
+        {
+          "name": "inkscape",
+          "kind": "cask"
+        },
+        {
+          "name": "gimp",
+          "kind": "cask"
+        },
+        {
+          "name": "krita",
+          "kind": "cask"
+        }
+      ],
+      "caveats": "Three full desktop apps (~2–3 GB combined). Runs on any supported Mac.",
+      "links": [
+        {
+          "label": "Inkscape",
+          "url": "https://inkscape.org"
+        },
+        {
+          "label": "GIMP",
+          "url": "https://www.gimp.org"
+        },
+        {
+          "label": "Krita",
+          "url": "https://krita.org"
+        }
+      ],
+      "maintainer": "brew-browser",
+      "addedIn": "0.7.0"
+    },
+    {
+      "id": "image-gen",
+      "name": "Image Generation",
+      "tagline": "Local Stable Diffusion / Flux with ComfyUI",
+      "category": "AI",
+      "icon": "image",
+      "packages": [
+        {
+          "name": "comfy",
+          "kind": "cask"
+        }
+      ],
+      "requires": {
+        "minRamGB": 16,
+        "recommendedRamGB": 24,
+        "minDiskGB": 30,
+        "arch": "apple-silicon",
+        "gpu": "required"
+      },
+      "capabilityNotes": {
+        "16": "SDXL comfortably; Flux fp8 with offloading",
+        "24": "Flux fp8 comfortably",
+        "48": "Flux fp16"
+      },
+      "setup": [
+        {
+          "kind": "note",
+          "text": "Launch ComfyUI, then download a checkpoint model — it is NOT installed by brew (SDXL ~7 GB, Flux ~24 GB)."
+        },
+        {
+          "kind": "command",
+          "run": "open -a ComfyUI",
+          "label": "Launch ComfyUI (you run this)",
+          "external": true
+        }
+      ],
+      "caveats": "Installs ComfyUI only; models are large downloads you fetch yourself. On Apple Silicon, generation is roughly 2–4× slower per image than a comparable NVIDIA GPU.",
+      "links": [
+        {
+          "label": "ComfyUI (GitHub)",
+          "url": "https://github.com/comfyanonymous/ComfyUI"
+        },
+        {
+          "label": "comfy.org",
+          "url": "https://www.comfy.org"
+        }
+      ],
+      "maintainer": "brew-browser",
+      "addedIn": "0.7.0"
+    },
+    {
+      "id": "local-llm",
+      "name": "Local LLMs",
+      "tagline": "Run models locally with Ollama + a web UI",
+      "category": "AI",
+      "icon": "brain",
+      "packages": [
+        {
+          "name": "ollama",
+          "kind": "formula"
+        },
+        {
+          "name": "open-webui",
+          "kind": "cask"
+        }
+      ],
+      "requires": {
+        "minRamGB": 8,
+        "recommendedRamGB": 16,
+        "minDiskGB": 12,
+        "arch": "any",
+        "gpu": "preferred"
+      },
+      "capabilityNotes": {
+        "8": "Small (~7–8B Q4) models only; larger will swap",
+        "16": "13–14B models comfortably",
+        "24": "26–32B class (Qwen, Gemma)",
+        "48": "70B models"
+      },
+      "setup": [
+        {
+          "kind": "service",
+          "service": "ollama",
+          "label": "Start the Ollama server"
+        },
+        {
+          "kind": "command",
+          "run": "ollama pull llama3.2",
+          "label": "Pull a starter model (you run this)",
+          "external": true
+        },
+        {
+          "kind": "open",
+          "url": "http://localhost:8080",
+          "label": "Open Open WebUI"
+        }
+      ],
+      "caveats": "Installs the tools; you still download models yourself (several GB each). Apple Silicon unified memory counts as VRAM — more RAM = bigger models.",
+      "links": [
+        {
+          "label": "Ollama docs",
+          "url": "https://docs.ollama.com"
+        },
+        {
+          "label": "Open WebUI",
+          "url": "https://openwebui.com"
+        }
+      ],
+      "maintainer": "brew-browser",
+      "addedIn": "0.7.0"
+    },
+    {
+      "id": "media",
+      "name": "Media Toolkit",
+      "tagline": "Transcode, download, and play — ffmpeg, yt-dlp, mpv",
+      "category": "Media",
+      "icon": "clapperboard",
+      "packages": [
+        {
+          "name": "ffmpeg",
+          "kind": "formula"
+        },
+        {
+          "name": "yt-dlp",
+          "kind": "formula"
+        },
+        {
+          "name": "mpv",
+          "kind": "formula"
+        }
+      ],
+      "setup": [
+        {
+          "kind": "command",
+          "run": "ffmpeg -version",
+          "label": "Verify ffmpeg (you run this)",
+          "external": true
+        }
+      ],
+      "caveats": "Command-line tools. Lightweight; runs on any supported Mac or Linux.",
+      "links": [
+        {
+          "label": "FFmpeg",
+          "url": "https://ffmpeg.org"
+        },
+        {
+          "label": "yt-dlp",
+          "url": "https://github.com/yt-dlp/yt-dlp"
+        },
+        {
+          "label": "mpv",
+          "url": "https://mpv.io"
+        }
+      ],
+      "maintainer": "brew-browser",
+      "addedIn": "0.7.0"
+    },
+    {
+      "id": "web-dev",
+      "name": "Web Dev Starter",
+      "tagline": "Node.js + pnpm — the modern JS toolchain",
+      "category": "Development",
+      "icon": "code",
+      "packages": [
+        {
+          "name": "node",
+          "kind": "formula"
+        },
+        {
+          "name": "pnpm",
+          "kind": "formula"
+        }
+      ],
+      "setup": [
+        {
+          "kind": "command",
+          "run": "node -v && pnpm -v",
+          "label": "Verify the toolchain (you run this)",
+          "external": true
+        }
+      ],
+      "caveats": "Installs the runtimes; project dependencies are per-project (pnpm install).",
+      "links": [
+        {
+          "label": "Node.js",
+          "url": "https://nodejs.org"
+        },
+        {
+          "label": "pnpm",
+          "url": "https://pnpm.io"
+        }
+      ],
+      "maintainer": "brew-browser",
+      "addedIn": "0.7.0"
+    }
+  ]
+}

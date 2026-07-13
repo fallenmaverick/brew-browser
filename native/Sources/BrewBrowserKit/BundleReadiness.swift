@@ -3,7 +3,7 @@ import Foundation
 /// What a bundle/recipe needs from the host to run. Shared data contract with
 /// the Tauri side (`BundleRequires` in src/lib/types.ts); `arch == "any"` means
 /// no arch constraint.
-public struct BundleRequires: Sendable, Codable, Equatable {
+public struct BundleRequires: Sendable, Codable, Equatable, Hashable {
     public let minRamGB: Int
     public let recommendedRamGB: Int
     public let minDiskGB: Int
