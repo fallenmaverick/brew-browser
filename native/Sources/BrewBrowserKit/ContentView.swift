@@ -207,7 +207,13 @@ public struct ContentView: View {
                     // drag rather than an accidental nudge; the in-panel close box
                     // (xmark.circle in PackageDetailView) is the intended dismiss.
                     Group {
-                        if let pkg = model.detailPackage {
+                        // One inspector slot, two detail kinds (mutually exclusive
+                        // per AppModel.openDetail/openBundleDetail): a bundle takes
+                        // precedence, else the package detail.
+                        if let bundle = model.detailBundle {
+                            BundleDetailView(model: model, bundle: bundle)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        } else if let pkg = model.detailPackage {
                             PackageDetailView(model: model, pkg: pkg)
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                         }
@@ -265,6 +271,8 @@ public struct ContentView: View {
             SnapshotsView(model: model)
         case .services:
             ServicesView(model: model)
+        case .bundles:
+            BundlesView(model: model)
         }
     }
 }

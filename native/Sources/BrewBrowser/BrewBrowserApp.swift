@@ -100,6 +100,8 @@ struct AppCommands: Commands {
                 .keyboardShortcut("5", modifiers: .command)
             Button("Activity")  { model.go(toSectionNumber: 6) }
                 .keyboardShortcut("6", modifiers: .command)
+            Button("Bundles")   { model.go(toSectionNumber: 7) }
+                .keyboardShortcut("7", modifiers: .command)
 
             Divider()
 

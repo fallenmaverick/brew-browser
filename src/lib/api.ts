@@ -19,6 +19,8 @@ import { invoke, Channel } from "@tauri-apps/api/core";
 import type {
   BrewEnvironment,
   Brewfile,
+  Bundle,
+  BundlePackage,
   BrewfileCheckReport,
   BrewfileId,
   BrewfileSummary,
@@ -49,6 +51,7 @@ import type {
   SearchResults,
   Service,
   Settings,
+  SystemProfile,
   SystemStatus,
   TrendingHistoryIndex,
   TrendingHistorySeries,
@@ -924,6 +927,55 @@ export function vulnsInvalidate(
   version: string,
 ): Promise<void> {
   return invoke<void>("vulns_invalidate", { kind, name, version });
+}
+
+/**
+ * Bundles M1 — probe the host's capabilities (RAM, arch, disk, GPU class)
+ * with zero installs. Small payload; the client-side `readiness()` gate in
+ * `$lib/util/readiness` consumes it against each bundle's `requires`.
+ */
+export function systemProfile(): Promise<SystemProfile> {
+  return invoke<SystemProfile>("system_profile");
+}
+
+/**
+ * Bundles M2 — load the curated bundle recipes embedded in the app. A single
+ * malformed recipe is skipped backend-side, so this always resolves with the
+ * valid ones (never throws for a bad recipe). Readiness is computed
+ * client-side via `$lib/util/readiness` against `systemProfile()`.
+ */
+export function bundles(): Promise<Bundle[]> {
+  return invoke<Bundle[]>("bundles");
+}
+
+/**
+ * Bundles M5 — opt-in live refresh of the recipe set from the project host
+ * (`brew-browser.zerologic.com/bundles/bundles.json`, one static-file GET).
+ * Gated backend-side on the `liveBundlesEnabled` toggle + network (paranoid/
+ * offline). Rejects on any failure (disabled, network, 404, parse, or a
+ * newer-than-supported schema) — callers keep the bundled copy and replace
+ * only on a non-empty result.
+ */
+export function bundlesLive(): Promise<Bundle[]> {
+  return invoke<Bundle[]>("bundles_live");
+}
+
+/**
+ * Bundles M3 — install every package in a bundle. Mirrors `brewUpgradeMany`:
+ * one streamed job (into Activity) that installs the set, then the caller
+ * reloads `packages`. Because brew's `--formula`/`--cask` flags can't be mixed
+ * in one invocation, a bundle with both kinds streams as two sequential steps
+ * (formulae, then casks) — each emits its own `started`→`exit` lifecycle on
+ * this channel, so the handler must cope with more than one `jobId`.
+ */
+export function brewInstallBundle(
+  packages: BundlePackage[],
+  onEvent: (evt: BrewStreamEvent) => void,
+): Promise<JobResult> {
+  return invoke<JobResult>("brew_install_bundle", {
+    packages,
+    onEvent: makeChannel(onEvent),
+  });
 }
 
 // ============================================================

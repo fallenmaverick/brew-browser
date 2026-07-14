@@ -5,6 +5,7 @@
   import Archive from "@lucide/svelte/icons/archive";
   import Activity from "@lucide/svelte/icons/activity";
   import Server from "@lucide/svelte/icons/server";
+  import PackagePlus from "@lucide/svelte/icons/package-plus";
   import LayoutDashboard from "@lucide/svelte/icons/layout-dashboard";
   import SearchIcon from "@lucide/svelte/icons/search";
   import XIcon from "@lucide/svelte/icons/x";
@@ -41,6 +42,7 @@
     { id: "snapshots", label: "Snapshots", shortcut: "⌘4", icon: Archive },
     { id: "services",  label: "Services",  shortcut: "⌘5", icon: Server },
     { id: "activity",  label: "Activity",  shortcut: "⌘6", icon: Activity },
+    { id: "bundles",   label: "Bundles",   shortcut: "⌘7", icon: PackagePlus },
   ];
 
   // ───────── Sidebar type-ahead search ─────────

@@ -11,6 +11,7 @@ enum Section: String, CaseIterable, Identifiable, Hashable {
     case snapshots = "Snapshots"
     case services  = "Services"
     case activity  = "Activity"
+    case bundles   = "Bundles"
 
     var id: String { rawValue }
 
@@ -24,6 +25,7 @@ enum Section: String, CaseIterable, Identifiable, Hashable {
         case .snapshots: return "camera"
         case .services:  return "gearshape.2"
         case .activity:  return "list.bullet.rectangle"
+        case .bundles:   return "square.stack.3d.up"
         }
     }
 }
@@ -394,14 +396,34 @@ public final class AppModel {
     func loadBundledData() async {
         if bundledDataLoaded { return }
         bundledDataLoaded = true
-        let (cat, enr) = await Task.detached(priority: .userInitiated) {
-            (CategoryCatalog.loadBundled(), EnrichmentCatalog.loadBundled())
+        let (cat, enr, bnd) = await Task.detached(priority: .userInitiated) {
+            (CategoryCatalog.loadBundled(), EnrichmentCatalog.loadBundled(), BundleCatalog().load())
         }.value
         categoryCatalog = cat
         enrichment = enr
+        bundles = bnd
         if !installed.isEmpty { categories = cat?.breakdown(installed: installed) ?? [] }
         if let pkg = detailPackage, settings.aiFeaturesVisible {
             detailEnrichment = enrichmentEntry(for: pkg.name)
+        }
+        // M5: if the user opted in, refresh the Bundles catalog from the project
+        // host in the background — never blocks first paint, silently keeps the
+        // bundled copy on any failure.
+        if settings.liveBundlesAllowed {
+            Task { await refreshLiveBundles() }
+        }
+    }
+
+    /// Opt-in live Bundles refresh (M5). Fetches `bundles/bundles.json` from the
+    /// project host and REPLACES `bundles` on success. Any failure (offline,
+    /// 404, network, malformed, or a newer-than-supported schema) leaves the
+    /// bundled catalog untouched. A valid-but-empty payload is ignored too, so a
+    /// blank file can't wipe the six shipped recipes. Gated on
+    /// `settings.liveBundlesAllowed` (opt-in + network).
+    func refreshLiveBundles() async {
+        guard settings.liveBundlesAllowed else { return }
+        if let live = await bundleLive.fetchBundles(), !live.isEmpty {
+            bundles = live
         }
     }
 
@@ -721,6 +743,7 @@ public final class AppModel {
         let map: [Int: Section] = [
             0: .dashboard, 1: .library, 2: .discover,
             3: .trending, 4: .snapshots, 5: .services, 6: .activity,
+            7: .bundles,
         ]
         if let s = map[n] { selection = s }
     }
@@ -810,6 +833,23 @@ public final class AppModel {
     var brewVersion = "—"
     var brewPrefix = "/opt/homebrew"
     var categories: [CategoryBreakdown] = []
+    /// Curated Bundles catalog (M2), parsed from the bundled `bundles.json` by
+    /// `loadBundledData()`. Per-bundle readiness (M3) is computed at render time
+    /// via `readiness(for:)` against `systemProfile`.
+    var bundles: [BrewBundle] = []
+
+    /// Host capability snapshot (M1), read once at construction. Feeds
+    /// `readiness(for:)` so the Bundles UI can gate recipes against this machine.
+    /// `SystemProfile.detect()` honors `BREWBROWSER_FAKE_RAM_GB`, so a debug run
+    /// can force Marginal/Blocked states on a high-RAM dev Mac.
+    var systemProfile = SystemProfile.detect()
+
+    /// Capability verdict for a bundle on this host (M3). Pure — just routes the
+    /// bundle's `requires`/`capabilityNotes` and the cached profile through the
+    /// M1 readiness function.
+    func readiness(for b: BrewBundle) -> Readiness {
+        BundleReadiness.readiness(b.requires, b.capabilityNotes, systemProfile)
+    }
     var runningServices = 0
     var dashboardLoaded = false
     /// `brew outdated --json=v2` is slow (~4s) and `du -sk` can lag, so they no
@@ -855,6 +895,11 @@ public final class AppModel {
     /// `closeDetail` (the ⊗ close box). A drag-collapse of the inspector must
     /// NOT clear it, or re-expanding within the same gesture shows an empty pane.
     var detailPackage: InstalledPackage?
+    /// The bundle whose detail is loaded in the shared inspector. Mutually
+    /// exclusive with `detailPackage`: Bundles reuses the same `.inspector` slot,
+    /// so exactly one of the two is non-nil while `showDetail` is true. Set only
+    /// by `openBundleDetail`, cleared by `closeDetail` (the ⊗ close box).
+    var detailBundle: BrewBundle?
     /// The section the inspector was opened from. When the user navigates to a
     /// different section, the detail closes (it belongs to where it was opened).
     var detailSection: Section?
@@ -1015,6 +1060,8 @@ public final class AppModel {
 
     // Opt-in live enrichment overlay (mirrors the Tauri store overlay).
     private let enrichmentLive = EnrichmentLiveService()
+    // Opt-in live Bundles-catalog refresh (M5), gated on settings.liveBundlesAllowed.
+    private let bundleLive = BundleLiveService()
     private var liveEnrichment: [String: EnrichmentEntry] = [:]
     private var liveEnrichmentAttempted: Set<String> = []
     private var liveCategoriesVersion: String = ""
@@ -1390,9 +1437,23 @@ public final class AppModel {
     func openDetail(_ pkg: InstalledPackage) {
         let detailPkg = packageForDetail(pkg)
         detailPackage = detailPkg
+        // Package and bundle detail share one inspector slot — clear the bundle
+        // so the two stay mutually exclusive.
+        detailBundle = nil
         detailSection = selection
         showDetail = true
         Task { await loadDetail(detailPkg) }
+    }
+
+    /// Open the shared inspector for a bundle (Bundles reuses the package-detail
+    /// inspector slot). Clears `detailPackage` so exactly one detail is loaded.
+    /// No async load — the bundle's data is already resident in `bundles`; its
+    /// live per-package installed state is read straight from `installed`.
+    func openBundleDetail(_ bundle: BrewBundle) {
+        detailBundle = bundle
+        detailPackage = nil
+        detailSection = .bundles
+        showDetail = true
     }
 
     func packageForDetail(_ pkg: InstalledPackage) -> InstalledPackage {
@@ -1416,6 +1477,7 @@ public final class AppModel {
     func closeDetail() {
         showDetail = false
         detailPackage = nil
+        detailBundle = nil
         detailSection = nil
         detailInfo = nil
         detailEnrichment = nil
@@ -1501,6 +1563,44 @@ public final class AppModel {
             guard detailPackage?.id == pkg.id else { return }
             brewVulnsInstalled = installed
         }
+    }
+
+    // MARK: - One-line description lookup (Bundles inline expand)
+
+    /// Resolve a package's short description, preferring data already resident in
+    /// the app over a subprocess. Used by `BundleDetailView`'s inline package
+    /// accordion so a bundle row can reveal what "orbstack", "caddy", etc. are.
+    ///
+    /// Order: (1) the bundled Discover/Library catalog, which carries `desc` for
+    /// every formula/cask (instant, no subprocess); (2) `brew info` — the same
+    /// path `loadDetail` uses to fill `PackageInfo.desc` — for tokens not resident
+    /// in the catalog (common for not-installed bundle packages). Both steps retry
+    /// under the bare token so a tap-qualified `user/tap/name` still resolves.
+    /// Returns nil when nothing yields a non-empty description.
+    func packageDescription(name: String, kind: InstalledPackage.Kind) async -> String? {
+        if let resident = catalogDescription(for: name, kind: kind) { return resident }
+
+        if let info = try? await brew.info(name: name, kind: kind),
+           let desc = info.desc, !desc.isEmpty {
+            return desc
+        }
+        let bare = Self.bareToken(name)
+        if bare != name,
+           let info = try? await brew.info(name: bare, kind: kind),
+           let desc = info.desc, !desc.isEmpty {
+            return desc
+        }
+        return nil
+    }
+
+    /// Description straight from the bundled catalog (Discover/Library metadata),
+    /// matched on token+kind with a bare-token fallback. nil when absent/empty.
+    private func catalogDescription(for token: String, kind: InstalledPackage.Kind) -> String? {
+        let bare = Self.bareToken(token)
+        let match = catalog.first { $0.token == token && $0.kind == kind }
+            ?? catalog.first { $0.token == bare && $0.kind == kind }
+        if let desc = match?.desc, !desc.isEmpty { return desc }
+        return nil
     }
 
     // MARK: - Live enrichment overlay (opt-in)
@@ -1904,6 +2004,44 @@ public final class AppModel {
         let args = BrewArgs.install(pkg.name, kind: pkg.kind, force: force, adopt: adopt)
         let ok = await startJob("Installing \(pkg.name)", args: args, startedAt: Date().timeIntervalSince1970)
         if ok, let pkg = detailPackage { await loadDetail(pkg) }
+    }
+
+    // MARK: - Bundles (M3)
+
+    /// Install every not-yet-installed package in a bundle (M3 "Install all").
+    /// brew rejects a single interleaved `--formula … --cask …` invocation
+    /// ("Options --cask and --formulae are mutually exclusive"), so
+    /// `BrewArgs.installBundle` splits the set into at most two per-kind groups
+    /// (formulae, then casks); each is ONE streamed Activity job — not N.
+    /// Already-installed packages are filtered out first (install is idempotent,
+    /// but this keeps the job to just the missing pieces). `startJob` refreshes
+    /// the library on success, so per-package installed state flips afterward.
+    func installBundle(_ b: BrewBundle) async {
+        let pending = b.packages.filter {
+            let kind = InstalledPackage.Kind(rawValue: $0.kind) ?? .formula
+            return !isPackageInstalled(token: $0.name, kind: kind)
+        }
+        let groups = BrewArgs.installBundle(pending)
+        guard !groups.isEmpty else { return }
+        let label = "Installing \(b.name)"
+        for args in groups {
+            let ok = await startJob(label, args: args, startedAt: Date().timeIntervalSince1970)
+            // Stop before the second (cask) job if the formula job failed — the
+            // failure is already surfaced in Activity; don't pile a second error on.
+            if !ok { break }
+        }
+    }
+
+    /// Install a SINGLE bundle package — the per-row "Install" affordance in
+    /// `BundleDetailView`. Reuses the exact streamed machinery `installBundle(_:)`
+    /// drives: `BrewArgs.installBundle` scoped to one package (which yields a
+    /// single install group) run through `startJob`, whose completion calls
+    /// `refresh()` so the row's `isInstalled` check flips to "Installed" on its
+    /// own. No brew-exec logic is duplicated. Unlike a full-bundle install the
+    /// caller keeps the inspector open — the user stays in the bundle.
+    func installPackage(_ pkg: BundlePackage) async {
+        guard let args = BrewArgs.installBundle([pkg]).first else { return }
+        await startJob("Installing \(pkg.name)", args: args, startedAt: Date().timeIntervalSince1970)
     }
 
     // MARK: - Bulk actions (Dashboard Updates card)
