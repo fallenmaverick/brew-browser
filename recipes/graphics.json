@@ -2,6 +2,7 @@
   "id": "graphics",
   "name": "Graphics & Design",
   "tagline": "Vector, raster, and digital painting — Inkscape, GIMP, Krita",
+  "description": "A complete open-source creative suite — vector, raster, and digital painting in three focused tools. Inkscape handles scalable vector art and SVG; GIMP 3.0 covers photo editing and compositing; Krita is a painter's canvas built for illustration and concept art. A capable, zero-cost alternative to the Adobe trio for design, illustration, and image work.",
   "category": "Graphics",
   "icon": "palette",
   "packages": [

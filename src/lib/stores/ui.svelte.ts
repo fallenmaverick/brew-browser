@@ -99,6 +99,11 @@ class UiStore {
   theme: ThemePreference = $state("system");
   /** the package currently shown in the detail panel; null = panel closed */
   selectedPackage: { name: string; kind: "formula" | "cask" } | null = $state(null);
+  /** id of the bundle currently shown in the Bundles detail pane; null = pane
+      closed. Mirrors `selectedPackage` so Bundles uses the same master-list +
+      right-side Details mechanics as Library/Trending (the pane reads the full
+      Bundle back out of the bundles store via `byId`). */
+  selectedBundle: string | null = $state(null);
   /** width of the package detail pane in px; persisted to localStorage */
   detailPaneWidth: number = $state(DETAIL_PANE_DEFAULT_WIDTH);
 
@@ -143,6 +148,9 @@ class UiStore {
     // brand-to-Dashboard / Cmd+0..6, which feels jarring — the user
     // clearly chose a new context; the lingering panel is from the old one.
     this.selectedPackage = null;
+    // Same for the Bundles detail pane — a new section is a new context, so
+    // entering Bundles always starts with nothing selected / pane closed.
+    this.selectedBundle = null;
     // Category chips are owned by Discover but borrowed by Library for
     // the same kind of filter. The chip context shouldn't follow the
     // user across panes — Discover's "Productivity" filter shouldn't
@@ -313,8 +321,16 @@ class UiStore {
     this.selectedPackage = { name, kind };
   }
 
+  /** Open (or swap) the Bundles detail pane to the given bundle id. Mirrors
+      `selectPackage`; the two panes are mutually exclusive by section so we
+      don't need to null the other here. */
+  selectBundle(id: string) {
+    this.selectedBundle = id;
+  }
+
   closeDetail() {
     this.selectedPackage = null;
+    this.selectedBundle = null;
   }
 
   setTheme(t: ThemePreference) {

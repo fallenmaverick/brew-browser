@@ -1,16 +1,17 @@
 import SwiftUI
 
-/// Bundles (M3) — a browse grid of curated package sets. Each card shows the
-/// bundle's icon, name, tagline, a capability-aware readiness pill, and its
-/// package makeup; tapping opens `BundleDetailView` in a sheet. Stock
-/// `GroupBox` cards in a `LazyVGrid`, matching the Dashboard card style.
+/// Bundles (M3) — curated package sets in the app's canonical list form: a stock
+/// `Table` whose selection drives the shared right-side `.inspector`
+/// (`BundleDetailView`), exactly like Library and Trending. Each row shows the
+/// bundle's icon + name + tagline, its package makeup, and a capability-aware
+/// readiness pill. Nothing is selected on entry and the inspector stays closed
+/// until the user picks a row (matches Library — no auto-select).
 public struct BundlesView: View {
     @Bindable var model: AppModel
 
-    /// Card selected for the detail sheet (`BrewBundle` is Identifiable by `id`).
-    @State private var selected: BrewBundle?
-
-    private let columns = [GridItem(.adaptive(minimum: 280), spacing: 16)]
+    /// The table's selection — the bundle `id`. Mirrors the inspector's open
+    /// bundle so the highlighted row tracks the detail panel.
+    @State private var selectedID: BrewBundle.ID?
 
     public init(model: AppModel) { self.model = model }
 
@@ -23,50 +24,51 @@ public struct BundlesView: View {
                     description: Text("Curated package sets will appear here.")
                 )
             } else {
-                ScrollView {
-                    LazyVGrid(columns: columns, spacing: 16) {
-                        ForEach(model.bundles) { bundle in
-                            BundleCard(model: model, bundle: bundle)
-                                .onTapGesture { selected = bundle }
-                        }
-                    }
-                    .padding(20)
-                }
+                table
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .sheet(item: $selected) { bundle in
-            BundleDetailView(model: model, bundle: bundle)
+        // Keep the table highlight in sync with the inspector: if detail is
+        // closed elsewhere (⊗ box / section change), clear the row selection too.
+        .onChange(of: model.showDetail) { _, shown in
+            if !shown { selectedID = nil }
         }
     }
-}
 
-/// One bundle card. Icon + name + tagline + readiness pill + "N formulae · M
-/// casks" line. The whole card is the hit target (the grid's `onTapGesture`).
-struct BundleCard: View {
-    @Bindable var model: AppModel
-    let bundle: BrewBundle
-
-    var body: some View {
-        GroupBox {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .top) {
+    // Stock sortable `Table` — single fixed column set (bundles carry no sort
+    // order), selection bound to the shared inspector via `openSelected`.
+    private var table: some View {
+        Table(model.bundles, selection: $selectedID) {
+            TableColumn("Name") { bundle in
+                HStack(spacing: 8) {
                     Image(systemName: bundleSymbol(bundle.icon))
-                        .font(.title2)
+                        .font(.title3)
                         .foregroundStyle(.tint)
-                    Spacer(minLength: 8)
-                    ReadinessPill(readiness: model.readiness(for: bundle))
+                        .frame(width: 22)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(bundle.name).font(.headline)
+                        Text(bundle.tagline)
+                            .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    }
                 }
-                Text(bundle.name).font(.headline)
-                Text(bundle.tagline)
-                    .font(.callout).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 0)
+            }.width(min: 220, ideal: 300)
+
+            TableColumn("Packages") { bundle in
                 Text(packageSummary(bundle))
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity, minHeight: 120, alignment: .leading)
-            .contentShape(.rect)
+                    .font(.callout).foregroundStyle(.secondary).lineLimit(1)
+            }.width(min: 110, ideal: 150)
+
+            TableColumn("Readiness") { bundle in
+                ReadinessPill(readiness: model.readiness(for: bundle))
+            }.width(min: 120, ideal: 150)
         }
+        .onChange(of: selectedID, openSelected)
+    }
+
+    private func openSelected() {
+        guard let id = selectedID,
+              let bundle = model.bundles.first(where: { $0.id == id }) else { return }
+        model.openBundleDetail(bundle)
     }
 }
 
@@ -125,6 +127,8 @@ func bundleSymbol(_ icon: String?) -> String {
     case "brain":        return "brain"
     case "clapperboard": return "film"
     case "code":         return "chevron.left.forwardslash.chevron.right"
+    case "agentic":      return "sparkles"
+    case "server":       return "server.rack"
     default:             return "square.stack.3d.up"
     }
 }

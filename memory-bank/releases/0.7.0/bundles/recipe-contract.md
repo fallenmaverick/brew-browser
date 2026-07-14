@@ -15,6 +15,7 @@ The normative spec a **recipe** must satisfy. Contributors add one JSON file per
   "id": "local-llm",                 // REQUIRED. kebab-case, unique, STABLE (it's the persistence key). ^[a-z0-9]+(-[a-z0-9]+)*$
   "name": "Local LLMs",              // REQUIRED. Display name. ≤ 40 chars.
   "tagline": "Run models locally with Ollama + a web UI", // REQUIRED. One line. ≤ 90 chars.
+  "description": "Run open-weight models entirely on your own machine …", // optional. 2–4 sentence "intent" paragraph: what this bundle is / who it's for / why these tools. DISTINCT from the short tagline and from caveats. 40–600 chars.
   "category": "AI",                  // REQUIRED. enum: AI | Graphics | Media | Development | Data | Productivity
   "icon": "brain",                   // optional. lucide (Tauri) / SF Symbol (native) — a name that exists in BOTH maps, or omit for a default.
   "packages": [                      // REQUIRED. ≥ 1. Order = display + install order.

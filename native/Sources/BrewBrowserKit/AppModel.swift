@@ -895,6 +895,11 @@ public final class AppModel {
     /// `closeDetail` (the ⊗ close box). A drag-collapse of the inspector must
     /// NOT clear it, or re-expanding within the same gesture shows an empty pane.
     var detailPackage: InstalledPackage?
+    /// The bundle whose detail is loaded in the shared inspector. Mutually
+    /// exclusive with `detailPackage`: Bundles reuses the same `.inspector` slot,
+    /// so exactly one of the two is non-nil while `showDetail` is true. Set only
+    /// by `openBundleDetail`, cleared by `closeDetail` (the ⊗ close box).
+    var detailBundle: BrewBundle?
     /// The section the inspector was opened from. When the user navigates to a
     /// different section, the detail closes (it belongs to where it was opened).
     var detailSection: Section?
@@ -1432,9 +1437,23 @@ public final class AppModel {
     func openDetail(_ pkg: InstalledPackage) {
         let detailPkg = packageForDetail(pkg)
         detailPackage = detailPkg
+        // Package and bundle detail share one inspector slot — clear the bundle
+        // so the two stay mutually exclusive.
+        detailBundle = nil
         detailSection = selection
         showDetail = true
         Task { await loadDetail(detailPkg) }
+    }
+
+    /// Open the shared inspector for a bundle (Bundles reuses the package-detail
+    /// inspector slot). Clears `detailPackage` so exactly one detail is loaded.
+    /// No async load — the bundle's data is already resident in `bundles`; its
+    /// live per-package installed state is read straight from `installed`.
+    func openBundleDetail(_ bundle: BrewBundle) {
+        detailBundle = bundle
+        detailPackage = nil
+        detailSection = .bundles
+        showDetail = true
     }
 
     func packageForDetail(_ pkg: InstalledPackage) -> InstalledPackage {
@@ -1458,6 +1477,7 @@ public final class AppModel {
     func closeDetail() {
         showDetail = false
         detailPackage = nil
+        detailBundle = nil
         detailSection = nil
         detailInfo = nil
         detailEnrichment = nil
@@ -1543,6 +1563,44 @@ public final class AppModel {
             guard detailPackage?.id == pkg.id else { return }
             brewVulnsInstalled = installed
         }
+    }
+
+    // MARK: - One-line description lookup (Bundles inline expand)
+
+    /// Resolve a package's short description, preferring data already resident in
+    /// the app over a subprocess. Used by `BundleDetailView`'s inline package
+    /// accordion so a bundle row can reveal what "orbstack", "caddy", etc. are.
+    ///
+    /// Order: (1) the bundled Discover/Library catalog, which carries `desc` for
+    /// every formula/cask (instant, no subprocess); (2) `brew info` — the same
+    /// path `loadDetail` uses to fill `PackageInfo.desc` — for tokens not resident
+    /// in the catalog (common for not-installed bundle packages). Both steps retry
+    /// under the bare token so a tap-qualified `user/tap/name` still resolves.
+    /// Returns nil when nothing yields a non-empty description.
+    func packageDescription(name: String, kind: InstalledPackage.Kind) async -> String? {
+        if let resident = catalogDescription(for: name, kind: kind) { return resident }
+
+        if let info = try? await brew.info(name: name, kind: kind),
+           let desc = info.desc, !desc.isEmpty {
+            return desc
+        }
+        let bare = Self.bareToken(name)
+        if bare != name,
+           let info = try? await brew.info(name: bare, kind: kind),
+           let desc = info.desc, !desc.isEmpty {
+            return desc
+        }
+        return nil
+    }
+
+    /// Description straight from the bundled catalog (Discover/Library metadata),
+    /// matched on token+kind with a bare-token fallback. nil when absent/empty.
+    private func catalogDescription(for token: String, kind: InstalledPackage.Kind) -> String? {
+        let bare = Self.bareToken(token)
+        let match = catalog.first { $0.token == token && $0.kind == kind }
+            ?? catalog.first { $0.token == bare && $0.kind == kind }
+        if let desc = match?.desc, !desc.isEmpty { return desc }
+        return nil
     }
 
     // MARK: - Live enrichment overlay (opt-in)
@@ -1972,6 +2030,18 @@ public final class AppModel {
             // failure is already surfaced in Activity; don't pile a second error on.
             if !ok { break }
         }
+    }
+
+    /// Install a SINGLE bundle package — the per-row "Install" affordance in
+    /// `BundleDetailView`. Reuses the exact streamed machinery `installBundle(_:)`
+    /// drives: `BrewArgs.installBundle` scoped to one package (which yields a
+    /// single install group) run through `startJob`, whose completion calls
+    /// `refresh()` so the row's `isInstalled` check flips to "Installed" on its
+    /// own. No brew-exec logic is duplicated. Unlike a full-bundle install the
+    /// caller keeps the inspector open — the user stays in the bundle.
+    func installPackage(_ pkg: BundlePackage) async {
+        guard let args = BrewArgs.installBundle([pkg]).first else { return }
+        await startJob("Installing \(pkg.name)", args: args, startedAt: Date().timeIntervalSince1970)
     }
 
     // MARK: - Bulk actions (Dashboard Updates card)

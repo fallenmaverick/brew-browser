@@ -2,6 +2,7 @@
   "id": "local-llm",
   "name": "Local LLMs",
   "tagline": "Run models locally with Ollama + a web UI",
+  "description": "Run open-weight models entirely on your own machine — private, offline-capable, no API bills. Ollama pulls and serves models with one command and exposes an OpenAI-compatible API on localhost:11434; Open WebUI adds a polished browser chat UI on top. Best for developers and privacy-conscious users who want ChatGPT-style workflows without sending data to the cloud.",
   "category": "AI",
   "icon": "brain",
   "packages": [

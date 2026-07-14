@@ -23,6 +23,9 @@ public struct BrewBundle: Sendable, Codable, Identifiable, Hashable {
     public let name: String
     /// One-line pitch (≤90 chars).
     public let tagline: String
+    /// Optional 2–4 sentence intent paragraph — the "why/what" of the bundle,
+    /// distinct from the short `tagline` and from post-install `caveats`.
+    public let description: String?
     /// One of AI / Graphics / Media / Development / Data / Productivity.
     public let category: String
     /// Optional icon token (SF Symbol-ish name the UI maps to a glyph).
@@ -46,14 +49,16 @@ public struct BrewBundle: Sendable, Codable, Identifiable, Hashable {
     /// First app version the recipe shipped in (e.g. "0.7.0").
     public let addedIn: String?
 
-    public init(id: String, name: String, tagline: String, category: String,
-                icon: String? = nil, packages: [BundlePackage], tap: String? = nil,
-                requires: BundleRequires? = nil, capabilityNotes: [String: String]? = nil,
+    public init(id: String, name: String, tagline: String, description: String? = nil,
+                category: String, icon: String? = nil, packages: [BundlePackage],
+                tap: String? = nil, requires: BundleRequires? = nil,
+                capabilityNotes: [String: String]? = nil,
                 setup: [SetupStep]? = nil, caveats: String? = nil,
                 links: [BundleLink]? = nil, maintainer: String? = nil, addedIn: String? = nil) {
         self.id = id
         self.name = name
         self.tagline = tagline
+        self.description = description
         self.category = category
         self.icon = icon
         self.packages = packages

@@ -1,49 +1,19 @@
 <script lang="ts">
   /**
-   * Bundles section (M3) — a responsive grid of curated bundle cards. Each
-   * card shows the bundle's icon, name, tagline, a capability-aware readiness
-   * pill (M1 `readiness()` against the probed `SystemProfile`), and package-kind
-   * chips. Clicking a card opens `BundleDetail` for the packages, verdict,
-   * caveats, links, and "Install all".
+   * Bundles section — a master list of curated bundle rows (BundleRow), mirroring
+   * Library/Trending. Clicking a row calls `ui.selectBundle(id)`, which opens the
+   * right-side `BundleDetailPane` (rendered in +page.svelte). Nothing is selected
+   * on entry — the pane stays closed until the user picks a row (matches Library;
+   * no auto-select).
    */
-  import Database from "@lucide/svelte/icons/database";
-  import Palette from "@lucide/svelte/icons/palette";
-  import Image from "@lucide/svelte/icons/image";
-  import Brain from "@lucide/svelte/icons/brain";
-  import Clapperboard from "@lucide/svelte/icons/clapperboard";
-  import Code from "@lucide/svelte/icons/code";
   import Package from "@lucide/svelte/icons/package";
 
-  import ReadinessPill from "./ReadinessPill.svelte";
-  import BundleDetail from "./BundleDetail.svelte";
+  import BundleRow from "./BundleRow.svelte";
+  import Button from "./Button.svelte";
+  import LoadingState from "./LoadingState.svelte";
+  import EmptyState from "./EmptyState.svelte";
   import { bundles } from "$lib/stores/bundles.svelte";
-  import type { Bundle } from "$lib/types";
-
-  // Recipe `icon` names → lucide components. Unknown/missing falls back to a
-  // generic package glyph so a new recipe never renders a broken card.
-  const ICONS: Record<string, typeof Package> = {
-    database: Database,
-    palette: Palette,
-    image: Image,
-    brain: Brain,
-    clapperboard: Clapperboard,
-    code: Code,
-  };
-  function iconFor(name: string | null | undefined): typeof Package {
-    return (name && ICONS[name]) || Package;
-  }
-
-  /** "2 formulae · 1 cask" style chip text for a card. */
-  function kindSummary(b: Bundle): string {
-    const f = b.packages.filter((p) => p.kind === "formula").length;
-    const c = b.packages.filter((p) => p.kind === "cask").length;
-    const parts: string[] = [];
-    if (f) parts.push(`${f} ${f === 1 ? "formula" : "formulae"}`);
-    if (c) parts.push(`${c} ${c === 1 ? "cask" : "casks"}`);
-    return parts.join(" · ") || "no packages";
-  }
-
-  let selected = $state<Bundle | null>(null);
+  import { ui } from "$lib/stores/ui.svelte";
 
   // Load bundles + profile on first mount. Idempotent.
   $effect(() => {
@@ -52,130 +22,95 @@
 </script>
 
 <section class="bundles" aria-label="Bundles">
-  <header class="head">
-    <h1>Bundles</h1>
-    <p class="subtitle">
-      Curated sets of tools that work together — installed in one click, with a
-      readiness check for your machine.
-    </p>
-  </header>
-
-  {#if bundles.loading && bundles.list.length === 0}
-    <p class="muted">Loading bundles…</p>
-  {:else if bundles.error}
-    <p class="muted">{bundles.error}</p>
-  {:else if bundles.list.length === 0}
-    <p class="muted">No bundles available.</p>
-  {:else}
-    <div class="grid">
-      {#each bundles.list as b (b.id)}
-        {@const Icon = iconFor(b.icon)}
-        {@const r = bundles.readinessFor(b)}
-        <button type="button" class="card" onclick={() => (selected = b)}>
-          <div class="card-top">
-            <span class="icon" aria-hidden="true"><Icon size={22} /></span>
-            <ReadinessPill verdict={r.verdict} reason={r.reason} />
-          </div>
-          <h2 class="name">{b.name}</h2>
-          <p class="tagline">{b.tagline}</p>
-          <p class="kinds">{kindSummary(b)}</p>
-        </button>
-      {/each}
-    </div>
-  {/if}
+  <div class="list-wrap">
+    {#if bundles.loading && bundles.list.length === 0}
+      <LoadingState rows={6} label="Loading bundles…" />
+    {:else if bundles.error}
+      <EmptyState title="Couldn't load bundles" body={bundles.error}>
+        {#snippet icon()}<Package size={48} />{/snippet}
+        {#snippet cta()}
+          <Button variant="secondary" onclick={() => bundles.load(true)}>Retry</Button>
+        {/snippet}
+      </EmptyState>
+    {:else if bundles.list.length === 0}
+      <EmptyState
+        title="No bundles available."
+        body="Curated sets of tools that work together — installed in one click, with a readiness check for your machine."
+      >
+        {#snippet icon()}<Package size={48} />{/snippet}
+      </EmptyState>
+    {:else}
+      <div class="list-header" role="row">
+        <span></span>
+        <span class="header-label">Name</span>
+        <span class="header-label">Tagline</span>
+        <span class="header-label">Packages</span>
+        <span class="header-label">Readiness</span>
+      </div>
+      <div class="list" role="list" aria-label="Bundles">
+        {#each bundles.list as b (b.id)}
+          <BundleRow
+            bundle={b}
+            selected={ui.selectedBundle === b.id}
+            onSelect={(bundle) => ui.selectBundle(bundle.id)}
+          />
+        {/each}
+      </div>
+    {/if}
+  </div>
 </section>
-
-{#if selected}
-  <BundleDetail bundle={selected} onClose={() => (selected = null)} />
-{/if}
 
 <style>
   .bundles {
-    padding: var(--space-4);
-    max-width: 1100px;
-    margin: 0 auto;
-  }
-  .head {
-    margin-bottom: var(--space-4);
-  }
-  .head h1 {
-    font-size: var(--text-title);
-    font-weight: var(--fw-semibold);
-    color: var(--color-text-primary);
-    margin: 0 0 var(--space-1) 0;
-  }
-  .subtitle {
-    color: var(--color-text-muted);
-    font-size: var(--text-body);
-    margin: 0;
-    max-width: 60ch;
-  }
-  .muted {
-    color: var(--color-text-muted);
-    font-size: var(--text-body);
-    padding: var(--space-4) 0;
-  }
-
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: var(--space-3);
-  }
-
-  .card {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
-    text-align: left;
-    padding: var(--space-3);
-    background: var(--color-surface-raised, var(--color-surface));
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    transition: border-color 0.12s ease, background 0.12s ease, transform 0.12s ease;
+    min-height: 0;
+    height: 100%;
   }
-  .card:hover {
-    border-color: var(--color-accent, #b8542a);
+
+  .list-wrap {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+  }
+  .list-header {
+    display: grid;
+    /* 5 cells matching BundleRow:
+       icon / NAME (1fr) / TAGLINE (2fr) / PACKAGES (130px) / READINESS (130px). */
+    grid-template-columns: 24px minmax(0, 1fr) minmax(0, 2fr) 130px 130px;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
     background: var(--color-surface);
-    transform: translateY(-1px);
+    border-bottom: 1px solid var(--color-border);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    overflow: hidden;
   }
-  .card:focus-visible {
-    outline: 2px solid var(--color-accent, #b8542a);
-    outline-offset: 2px;
+  .list-header > * { min-width: 0; overflow: hidden; }
+  .header-label {
+    font-size: var(--text-body-sm);
+    font-weight: var(--fw-medium);
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
   }
 
-  .card-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: var(--space-1);
+  /* Match BundleRow's responsive column-drops so the header stays aligned
+     with the rows when the panel narrows (e.g. detail pane open). */
+  @media (max-width: 1100px) {
+    .list-header {
+      grid-template-columns: 24px minmax(0, 1fr) minmax(0, 2fr) 130px;
+    }
+    .list-header > :nth-child(4) { display: none; }
   }
-  .icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: var(--radius-sm);
-    background: var(--color-surface-sunken);
-    color: var(--color-text-primary);
+  @media (max-width: 820px) {
+    .list-header {
+      grid-template-columns: 24px minmax(0, 1fr) 130px;
+    }
+    .list-header > :nth-child(3),
+    .list-header > :nth-child(4) { display: none; }
   }
 
-  .name {
-    font-size: var(--text-body);
-    font-weight: var(--fw-semibold);
-    color: var(--color-text-primary);
-    margin: 0;
-  }
-  .tagline {
-    font-size: var(--text-body-sm);
-    color: var(--color-text-muted);
-    margin: 0;
-    line-height: 1.35;
-  }
-  .kinds {
-    font-size: var(--text-body-sm);
-    color: var(--color-text-muted);
-    margin: var(--space-1) 0 0 0;
-  }
+  .list { display: flex; flex-direction: column; }
 </style>

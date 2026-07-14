@@ -34,6 +34,7 @@ function checkStructure(r, errs) {
   req(typeof r.id === "string" && isKebab(r.id), "id must be kebab-case");
   req(typeof r.name === "string" && r.name.length >= 1 && r.name.length <= 40, "name 1–40 chars");
   req(typeof r.tagline === "string" && r.tagline.length >= 1 && r.tagline.length <= 90, "tagline 1–90 chars");
+  if (r.description != null) req(typeof r.description === "string" && r.description.length >= 40 && r.description.length <= 600, "description 40–600 chars");
   req(CATEGORIES.includes(r.category), `category must be one of ${CATEGORIES.join(", ")}`);
   req(Array.isArray(r.packages) && r.packages.length >= 1, "packages: ≥1 required");
   for (const p of r.packages ?? []) {

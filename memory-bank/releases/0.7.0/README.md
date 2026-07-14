@@ -40,21 +40,31 @@ Grouped by theme; every item is a merged PR on `main` unless marked.
 
 ---
 
-## Headline feature — Bundles / Recipes (planned, plan complete)
-Curated **one-click package stacks** with post-install setup guidance, **capability-gated** by a zero-install system profile (RAM/arch/GPU/disk) so an 8GB Mac isn't told to install a local-LLM stack it can't run. New "Bundles" nav section; brew-native install auto-runs, external steps (model pulls, etc.) are copy-paste. Both shells. **Contributor-friendly:** recipes are validated JSON files anyone can PR against a published contract.
+## Headline feature — Bundles / Recipes (BUILT + refined 2026-07-13)
+Curated **one-click package stacks** with post-install setup guidance, **capability-gated** by a zero-install system profile (RAM/arch/GPU/disk) so an 8GB Mac isn't told to install a local-LLM stack it can't run. "Bundles" nav section; brew-native install auto-runs, external steps (model pulls, etc.) are copy-paste. Both shells. **Contributor-friendly:** recipes are validated JSON files anyone can PR against a published contract.
 
-**Plan (approved 2026-07-12, not yet built):** overview in **[bundles-plan.md](./bundles-plan.md)**; 5 milestone build docs + the contributor contract + July-2026 capability baselines under **[`bundles/`](./bundles/)**:
+**Plan docs (2026-07-12):** overview in **[bundles-plan.md](./bundles-plan.md)**; contributor contract + July-2026 capability baselines + 5 milestone build docs under **[`bundles/`](./bundles/)**:
 - [recipe-contract.md](./bundles/recipe-contract.md) · [capability-baselines.md](./bundles/capability-baselines.md)
 - M1 [capability-engine](./bundles/m1-capability-engine.md) → M2 [contract-and-loader](./bundles/m2-recipe-contract-and-loader.md) → M3 [browse-and-install](./bundles/m3-browse-and-install.md) → M4 [setup-guidance](./bundles/m4-setup-guidance.md) → M5 [live-refresh-and-contributions](./bundles/m5-live-refresh-and-contributions.md)
 
-Initial 6 recipes (tokens/taps verified 2026-07-12, all official taps): Local LLMs (`ollama`+`open-webui`), Image Gen (`comfy`), Graphics (`inkscape`/`gimp`/`krita`), Media (`ffmpeg`/`yt-dlp`/`mpv`), Web Dev (`node`+…), Databases (`postgresql@16`/`redis`).
+**Post-M5 refinement (2026-07-13, this session, both shells):**
+- **List + Details pane** — Bundles moved from a card-grid + modal to the app's canonical master-list + right-side Details pane (matches Library/Trending exactly: no auto-select, pane closed on entry, ✕/section-switch closes). Tauri = shell-level resizable `<aside>` reusing `detailPaneWidth`; native = the stock `.inspector`.
+- **Recipe set 6 → 9** (all tokens `brew info`-verified, **zero third-party taps**): Local LLMs (`ollama`+`open-webui`), **Image Gen** (`draw-things`+`comfy`), Graphics (`inkscape`/`gimp`/`krita`), **Media** (`ffmpeg`/`yt-dlp`/`mpv`/`handbrake`), **Web Dev Starter** (`node`/`pnpm`/`git`/`gh`), **Local Databases** (`postgresql@16`/`redis`/`tableplus`/`dbeaver-community`), **Agentic Web Dev** (`opencode`/`zed`/`node`/`pnpm`/`git`/`caddy`/`orbstack`), **LAMP** (`httpd`/`mysql`/`php`), **LEMP** (`nginx`/`mariadb`/`php`). opencode is now first-class in homebrew/core.
+- **New `description` field** (intent paragraph) in the recipe contract (schema + validator + both docs), rendered under the tagline. NOTE: the Tauri path serves bundles *through Rust* — `description` had to be added to the Rust `Bundle` struct (`src-tauri/src/types.rs`) or serde silently drops it; a regression test now guards the round-trip.
+- **Readiness dedup** — header pill is the sole verdict; body shows a color-coded reason callout only for marginal/blocked (killed the redundant "Ready / Ready.").
+- **Clickable inline package descriptions** — each package row is a disclosure that lazy-fetches its one-line desc (catalog first, brew-info fallback), cached, multiple-open.
+- **Per-package Install** — "Not installed" is now an inline **Install** action (single package, reuses the streamed install path, keeps the pane open, row flips to Installed); Install click isolated from the description toggle.
+- Bundle icons: added `server` (LAMP/LEMP) + `agentic` (fixed a Tauri parity gap where it fell back to the generic glyph).
+- Gate: recipes 9/9 · native `swift build` + 195 tests · Rust bundle tests 9/9 · Tauri svelte-check 0 / vitest 57.
+- Community can PR the long tail (Rails/Django/MEAN — note Mongo needs the `mongodb/brew` tap) against the contract.
 
 ---
 
 ## Release checklist (all gated to the user)
 - [x] Merge **#110** (GHSA references) into `main`. ✅ 2026-07-12 (main `6799e98`).
 - [x] Decide: **Bundles rides THIS release** (0.7.0/0.3.0), plan complete → `bundles/`. ✅ 2026-07-12.
-- [x] Build Bundles **M1–M5, both shells** (branch `feat/bundles`, 2026-07-13): capability engine, recipe contract + 6 recipes + validator, browse/install UI, setup guidance, CI + CONTRIBUTING, **and the M5 live-refresh client**. Gate: Tauri cargo 686 / svelte 0 / vitest · Native 192 tests · recipes 6/6. Both apps launch clean with the Bundles section; no unresolved TODOs in new code.
+- [x] Build Bundles **M1–M5, both shells** (branch `feat/bundles`, 2026-07-13): capability engine, recipe contract + validator, browse/install UI, setup guidance, CI + CONTRIBUTING, **and the M5 live-refresh client**. Both apps launch clean with the Bundles section; no unresolved TODOs in new code.
+- [x] **Post-M5 refinement (2026-07-13):** list+Details-pane refactor, recipe set 6→9 (Agentic Web Dev + LAMP + LEMP; expanded Image Gen/Media/Web Dev/Databases), `description` intent field (incl. Rust-struct round-trip fix), readiness dedup, clickable inline package descriptions, per-package Install. Gate: recipes 9/9 · native swift build + 195 tests · Rust bundle tests 9/9 · Tauri svelte-check 0 / vitest 57. See the Bundles section above.
 - [ ] **Serve the live-refresh endpoint**: publish `bundles.json` to `<host>/bundles/bundles.json` (release-publish step, gated to the user). The M5 client is built + unit-tested and ships safely (bundled copy kept on any error / 404); a live 200 activates the refresh. Until then it's a no-op fail-soft — nothing to verify app-side.
 - [ ] Version bumps: `package.json` / `Cargo.toml` / `tauri.conf.json` → `0.7.0`; native `build-app.sh` CFBundleShortVersionString → `0.3.0`. Docs (README, BUILD.md, release-notes/unreleased.md, native/README) consistent.
 - [ ] Live-verify on main: pin/unpin (formula + cask), Library bottom bar + Pinned tab, list-scale, install-trend, vulnerable-footer nav, GHSA enrichment.

@@ -74,7 +74,7 @@ mod tests {
     #[test]
     fn embedded_bundles_parse() {
         let list = parse_bundles(BUNDLES_JSON);
-        assert_eq!(list.len(), 6, "expected 6 first-party bundles");
+        assert_eq!(list.len(), 9, "expected 9 first-party bundles");
 
         // Spot-check local-llm: 2 packages, requires.minRamGB == 8, and a
         // service setup step for ollama.
@@ -91,6 +91,22 @@ mod tests {
             llm.setup.iter().any(|s| s.kind == "service" && s.service.as_deref() == Some("ollama")),
             "local-llm has a service setup step for ollama"
         );
+        // The intent paragraph must survive the Rust round-trip to the frontend
+        // (the `description` field is on the struct, not silently dropped).
+        assert!(
+            llm.description.as_deref().is_some_and(|d| !d.is_empty()),
+            "local-llm's description paragraph must reach the frontend"
+        );
+
+        // Spot-check the agentic bundle: present, carries a description, and
+        // includes the coding agent + version control.
+        let agentic = list
+            .iter()
+            .find(|b| b.id == "agentic-web-dev")
+            .expect("agentic-web-dev bundle must be present");
+        assert!(agentic.description.as_deref().is_some_and(|d| !d.is_empty()));
+        assert!(agentic.packages.iter().any(|p| p.name == "opencode"));
+        assert!(agentic.packages.iter().any(|p| p.name == "git"));
     }
 
     #[test]

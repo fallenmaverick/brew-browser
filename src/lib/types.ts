@@ -1169,6 +1169,11 @@ export interface Bundle {
   id: string;
   name: string;
   tagline: string;
+  /** Optional 2–4 sentence intent paragraph ("what is this / why"), distinct
+   *  from the short one-line `tagline` and from the cautionary `caveats`.
+   *  Rendered as body copy under the tagline in the detail pane. Absent on
+   *  recipes authored before the field was added. */
+  description?: string;
   category: string;
   icon?: string | null;
   packages: BundlePackage[];

@@ -10,6 +10,7 @@ A **bundle** is a curated one-click stack (packages) with post-install guidance,
 2. **Edit** the fields (see the full contract: [`memory-bank/releases/0.7.0/bundles/recipe-contract.md`](memory-bank/releases/0.7.0/bundles/recipe-contract.md)). The essentials:
    - `id` — kebab-case, unique, **stable** (it's the persistence key).
    - `name`, `tagline`, `category` (`AI` | `Graphics` | `Media` | `Development` | `Data` | `Productivity`).
+   - `description` (optional) — a 2–4 sentence "intent" paragraph (what this bundle is / who it's for / why these tools), **distinct** from the short `tagline` and from `caveats`. 40–600 chars.
    - `packages` — each `{ "name": "<brew token>", "kind": "formula" | "cask" }`. **Must resolve via `brew info`.** If any package is in a third-party tap (not `homebrew/core`/`homebrew/cask`), set the top-level `"tap": "user/repo"`.
    - `requires` (optional) — `minRamGB` / `recommendedRamGB` / `minDiskGB` / `arch` / `gpu`. Omit for "runs anywhere". See [`capability-baselines.md`](memory-bank/releases/0.7.0/bundles/capability-baselines.md) for how to pick numbers.
    - `setup` (optional) — post-install steps. `service` / `open` / `reveal` run in-app; **`command` steps MUST set `"external": true`** and are copy-only (the app never runs arbitrary shell).

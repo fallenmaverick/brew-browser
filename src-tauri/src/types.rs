@@ -593,6 +593,9 @@ pub struct Bundle {
     pub id: String,
     pub name: String,
     pub tagline: String,
+    /// Longer intent paragraph shown under the tagline in the detail pane.
+    /// Optional; distinct from `tagline` (short) and `caveats` (warning).
+    pub description: Option<String>,
     pub category: String,
     pub icon: Option<String>,
     pub packages: Vec<BundlePackage>,

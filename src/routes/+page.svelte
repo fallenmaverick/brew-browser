@@ -12,6 +12,7 @@
   import Bundles from "$lib/components/Bundles.svelte";
   import OnboardingView from "$lib/components/OnboardingView.svelte";
   import PackageDetail from "$lib/components/PackageDetail.svelte";
+  import BundleDetailPane from "$lib/components/BundleDetailPane.svelte";
   import ResizeHandle from "$lib/components/ResizeHandle.svelte";
   import ActivityDrawer from "$lib/components/ActivityDrawer.svelte";
   import CommandPalette from "$lib/components/CommandPalette.svelte";
@@ -233,6 +234,22 @@
           onCommit={(w) => ui.setDetailPaneWidth(w)}
         />
         <PackageDetail />
+      {/if}
+      {#if ui.selectedBundle}
+        <!-- Bundles Details pane — same ResizeHandle + width wiring as the
+             package branch above. The two panes are mutually exclusive by
+             section (setSection nulls both), so only one ever renders. -->
+        <ResizeHandle
+          width={ui.detailPaneWidth}
+          min={DETAIL_PANE_MIN_WIDTH}
+          max={detailPaneMax}
+          defaultWidth={DETAIL_PANE_DEFAULT_WIDTH}
+          direction="left"
+          label="Resize bundle detail panel"
+          onChange={(w) => (ui.detailPaneWidth = w)}
+          onCommit={(w) => ui.setDetailPaneWidth(w)}
+        />
+        <BundleDetailPane />
       {/if}
     {/if}
   </div>
