@@ -13,6 +13,13 @@ export const DETAIL_PANE_MIN_WIDTH = 320;
 /** Storage key for the user's preferred pane width. */
 const DETAIL_PANE_WIDTH_KEY = "brew-browser:detail-pane-width";
 
+/** Current fixed Activity drawer height, retained as the default. */
+export const ACTIVITY_DRAWER_DEFAULT_HEIGHT = 280;
+/** Minimum expanded drawer height, matching the native SwiftUI drawer. */
+export const ACTIVITY_DRAWER_MIN_HEIGHT = 252;
+/** Storage key for the user's preferred Activity drawer height. */
+const ACTIVITY_DRAWER_HEIGHT_KEY = "brew-browser:activity:drawer-height:v1";
+
 /** Storage keys for Settings-modal preferences (Phase 12b). */
 const DEFAULT_SECTION_KEY = "brew-browser:default-section";
 const VIBRANCY_MATERIAL_KEY = "brew-browser:vibrancy-material";
@@ -64,6 +71,14 @@ export function clampDetailPaneWidth(w: number, windowWidth?: number): number {
   return Math.min(Math.max(Math.round(w), DETAIL_PANE_MIN_WIDTH), max);
 }
 
+/** Clamp the Activity drawer to its 252 px floor and 60% window-height ceiling. */
+export function clampActivityDrawerHeight(height: number, windowHeight?: number): number {
+  const wh = windowHeight ?? (typeof window === "undefined" ? 720 : window.innerHeight);
+  const max = Math.max(ACTIVITY_DRAWER_MIN_HEIGHT, Math.floor(wh * 0.6));
+  if (!Number.isFinite(height)) return ACTIVITY_DRAWER_DEFAULT_HEIGHT;
+  return Math.min(Math.max(Math.round(height), ACTIVITY_DRAWER_MIN_HEIGHT), max);
+}
+
 /** Human-readable titles shown in the window title bar for each section.
     Kept here (not in Sidebar) so the title bar can read them without
     importing the navigation array. */
@@ -88,6 +103,8 @@ class UiStore {
   pageTitle = $derived(SECTION_TITLES[this.section]);
   drawerOpen: boolean = $state(false);
   drawerMinimized: boolean = $state(false);
+  /** Expanded Activity drawer height in px; persisted to localStorage. */
+  drawerHeight: number = $state(ACTIVITY_DRAWER_DEFAULT_HEIGHT);
   paletteOpen: boolean = $state(false);
   /** Settings modal (Phase 12b). Opened via the top-right gear icon or ⌘,. */
   settingsOpen: boolean = $state(false);
@@ -369,6 +386,28 @@ class UiStore {
   /** Reset to default width (used by double-clicking the resize handle). */
   resetDetailPaneWidth() {
     this.setDetailPaneWidth(DETAIL_PANE_DEFAULT_WIDTH);
+  }
+
+  /** Load persisted drawer height on app mount; clamps in case the window shrank. */
+  loadActivityDrawerHeightFromStorage() {
+    try {
+      const raw = localStorage.getItem(ACTIVITY_DRAWER_HEIGHT_KEY);
+      if (raw != null) {
+        const n = Number(raw);
+        if (Number.isFinite(n)) this.drawerHeight = clampActivityDrawerHeight(n);
+      }
+    } catch { /* ignore */ }
+  }
+
+  /** Set + persist the expanded drawer height within its current bounds. */
+  setActivityDrawerHeight(height: number) {
+    this.drawerHeight = clampActivityDrawerHeight(height);
+    try { localStorage.setItem(ACTIVITY_DRAWER_HEIGHT_KEY, String(this.drawerHeight)); } catch { /* ignore */ }
+  }
+
+  /** Reset the Activity drawer to its original fixed height. */
+  resetActivityDrawerHeight() {
+    this.setActivityDrawerHeight(ACTIVITY_DRAWER_DEFAULT_HEIGHT);
   }
 }
 

@@ -26,10 +26,15 @@ public struct ContentView: View {
     var updater: UpdaterController
     @Environment(\.openSettings) private var openSettings
     @Environment(\.scenePhase) private var scenePhase
+    private static let activityDrawerHeightKey = "activity.drawerHeight.v2"
+    @State private var initialActivityDrawerHeight: CGFloat
 
     public init(model: AppModel, updater: UpdaterController) {
         self.model = model
         self.updater = updater
+        let savedHeight = UserDefaults.standard.object(forKey: Self.activityDrawerHeightKey) as? Double
+            ?? Double(ActivityDrawer.minimumDrawerHeight)
+        _initialActivityDrawerHeight = State(initialValue: CGFloat(savedHeight))
     }
 
     public var body: some View {
@@ -47,7 +52,83 @@ public struct ContentView: View {
     }
 
     private var mainContent: some View {
-      VStack(spacing: 0) {
+      activityLayout
+      // In-window toasts (Bundle F) — layered top-trailing over everything so
+      // they're clear of the bottom Activity drawer. See Toast.swift.
+      .overlay { ToastOverlay(model: model) }
+      .task {
+            model.loadJobs()
+            model.loadVulns()
+            if model.installed.isEmpty { await model.loadLibrary() }
+      }
+      // ⌘K command palette — stock `.sheet` overlay (BrewBrowserApp's .commands
+      // flips `paletteOpen`). The catalog backs the palette's index search, so
+      // make sure it's loaded the first time the palette opens.
+      .sheet(isPresented: $model.paletteOpen) {
+          CommandPaletteView(model: model)
+      }
+      // Custom About box (replaces the bare standard panel) — opened from the
+      // app menu's "About brew-browser". Mirrors the Tauri AboutModal.
+      .sheet(isPresented: $model.aboutOpen) {
+          AboutView(model: model)
+      }
+      // Esc closes the open detail inspector. The palette is a `.sheet`, which
+      // handles its own Esc, so by the time Esc reaches here the palette is
+      // already closed and only the inspector remains. Returns `.ignored` when
+      // there's nothing to close so Esc keeps its default behavior elsewhere.
+      .onKeyPress(.escape) {
+          model.closeTopmostOverlay() ? .handled : .ignored
+      }
+    }
+
+    @ViewBuilder
+    private var activityLayout: some View {
+        if model.drawerOpen, model.activeJobId != nil {
+            // Match the sidebar's smooth native divider: VSplitView is AppKit-
+            // backed, so live resizing does not recreate the console hierarchy.
+            VSplitView {
+                navigationContent
+                resizableActivityDrawer
+            }
+        } else {
+            VStack(spacing: 0) {
+                navigationContent
+                ActivityDrawer(model: model)
+            }
+        }
+    }
+
+    private var maximumActivityDrawerHeight: CGFloat {
+        let window = NSApp.keyWindow ?? NSApp.mainWindow
+        return max(ActivityDrawer.minimumDrawerHeight, (window?.contentLayoutRect.height ?? 720) * 0.6)
+    }
+
+    private var resizableActivityDrawer: some View {
+        let maximum = maximumActivityDrawerHeight
+        let ideal = ActivityDrawer.clampedDrawerHeight(initialActivityDrawerHeight, maximum: maximum)
+        return ActivityDrawer(model: model, fillsAvailableHeight: true)
+            .frame(minHeight: ActivityDrawer.minimumDrawerHeight,
+                   idealHeight: ideal,
+                   maxHeight: maximum)
+            // The split view owns the current size. Persisting the observed size
+            // does not feed it back into this layout, avoiding resize feedback.
+            .background {
+                GeometryReader { proxy in
+                    Color.clear
+                        .onAppear { persistActivityDrawerHeight(proxy.size.height) }
+                        .onChange(of: proxy.size.height) { _, height in
+                            persistActivityDrawerHeight(height)
+                        }
+                }
+            }
+    }
+
+    private func persistActivityDrawerHeight(_ height: CGFloat) {
+        guard height >= ActivityDrawer.minimumDrawerHeight else { return }
+        UserDefaults.standard.set(Double(height), forKey: Self.activityDrawerHeightKey)
+    }
+
+    private var navigationContent: some View {
         NavigationSplitView {
             List(Section.allCases, selection: $model.selection) { section in
                 Label(section.rawValue, systemImage: section.symbol)
@@ -221,37 +302,6 @@ public struct ContentView: View {
                     .inspectorColumnWidth(min: 360, ideal: 400, max: 560)
                 }
         }
-        // Activity drawer as a true full-width bottom bar BELOW the whole split
-        // view (sibling, not an inset/overlay) — so the split view + the
-        // inspector's own footer live entirely above it and nothing is covered.
-        ActivityDrawer(model: model)
-      }
-      // In-window toasts (Bundle F) — layered top-trailing over everything so
-      // they're clear of the bottom Activity drawer. See Toast.swift.
-      .overlay { ToastOverlay(model: model) }
-      .task {
-            model.loadJobs()
-            model.loadVulns()
-            if model.installed.isEmpty { await model.loadLibrary() }
-      }
-      // ⌘K command palette — stock `.sheet` overlay (BrewBrowserApp's .commands
-      // flips `paletteOpen`). The catalog backs the palette's index search, so
-      // make sure it's loaded the first time the palette opens.
-      .sheet(isPresented: $model.paletteOpen) {
-          CommandPaletteView(model: model)
-      }
-      // Custom About box (replaces the bare standard panel) — opened from the
-      // app menu's "About brew-browser". Mirrors the Tauri AboutModal.
-      .sheet(isPresented: $model.aboutOpen) {
-          AboutView(model: model)
-      }
-      // Esc closes the open detail inspector. The palette is a `.sheet`, which
-      // handles its own Esc, so by the time Esc reaches here the palette is
-      // already closed and only the inspector remains. Returns `.ignored` when
-      // there's nothing to close so Esc keeps its default behavior elsewhere.
-      .onKeyPress(.escape) {
-          model.closeTopmostOverlay() ? .handled : .ignored
-      }
     }
 
     @ViewBuilder
