@@ -110,8 +110,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>CFBundleIdentifier</key><string>com.zerologic.brew-browser-native</string>
     <key>CFBundleExecutable</key><string>BrewBrowser</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>0.3.0</string>
-    <key>CFBundleVersion</key><string>3</string>
+    <key>CFBundleShortVersionString</key><string>0.3.1</string>
+    <key>CFBundleVersion</key><string>4</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>CFBundleIconName</key><string>AppIcon</string>
     <key>LSMinimumSystemVersion</key><string>26.0</string>
