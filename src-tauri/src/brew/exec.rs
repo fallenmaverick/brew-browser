@@ -71,6 +71,17 @@ pub(crate) fn apply_brew_env(cmd: &mut Command) {
     for (key, val) in BREW_ENV {
         cmd.env(key, val);
     }
+
+    // Ensure Homebrew paths are prepended to PATH so GUI process launches (Finder, Dock)
+    // inherit correct Homebrew resolution priority for subcommands (git, openssl, python).
+    let path = std::env::var_os("PATH").unwrap_or_default();
+    let additional_paths = "/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/local/sbin";
+    let mut new_path = std::ffi::OsString::from(additional_paths);
+    if !path.is_empty() {
+        new_path.push(":");
+        new_path.push(path);
+    }
+    cmd.env("PATH", new_path);
 }
 
 pub async fn run_brew_capture(
