@@ -148,6 +148,13 @@ class GithubStore {
     this.statusLoading = true;
     try {
       this.status = await githubStatus();
+      if (this.status && typeof localStorage !== "undefined") {
+        if (this.status.signedIn) {
+          localStorage.setItem("brew-browser:github:signed-in", "true");
+        } else {
+          localStorage.removeItem("brew-browser:github:signed-in");
+        }
+      }
     } catch (e) {
       // Status read shouldn't fail under normal conditions; if it
       // does we keep the previous value so the UI doesn't flap.

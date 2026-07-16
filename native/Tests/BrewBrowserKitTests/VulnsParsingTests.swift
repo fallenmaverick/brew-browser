@@ -127,8 +127,9 @@ struct VulnsValidateNameTests {
     @Test func acceptsTypicalAndTapQualifiedNames() throws {
         for name in [
             "curl", "openssl@3", "python@3.12", "git-lfs", "lib_foo",
-            // Issue #92: third-party tap formulae are `user/repo/name`.
+            // Issue #92: third-party tap formulae are `user/repo/name` or shorthand `user/name`.
             "anomalyco/tap/opencode", "homebrew/core/wget", "user-name/repo_2/formula@1.2",
+            "anomalyco/opencode", "homebrew/wget",
         ] {
             try VulnsService.validateFormulaName(name)  // throws on reject
         }
@@ -136,7 +137,7 @@ struct VulnsValidateNameTests {
 
     @Test func rejectsMalformedSlashesAndShellMeta() {
         for bad in [
-            "/leading", "trailing/", "a//b", "two/segments", "a/b/c/d",
+            "/leading", "trailing/", "a//b", "a/b/c/d",
             "a/../b", "../etc/passwd", "./relative",
             "curl; rm -rf /", "curl|nc", "curl`whoami`", "curl $(id)", "",
         ] {

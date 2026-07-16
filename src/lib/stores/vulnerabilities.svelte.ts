@@ -42,6 +42,13 @@ import {
 } from "$lib/types";
 import { reportableToastError } from "$lib/util/reportIssue";
 
+function parseIsoDate(isoString: string): Date {
+  // Truncate sub-millisecond precision (more than 3 decimal places after the dot)
+  // to avoid WebKit / Safari parsing bugs or fallback to local timezone.
+  const normalized = isoString.replace(/(\.\d{3})\d+/, "$1");
+  return new Date(normalized);
+}
+
 /**
  * One per-package vulnerability record. Keyed in the store by
  * `"{kind}:{name}"` — version lives on the record itself so callers
@@ -236,9 +243,9 @@ class VulnerabilitiesStore {
     this.loading = true;
     try {
       const report = await vulnsScanAll(force);
-      this.#applyReport(report.entries, new Date(report.scannedAt));
+      this.#applyReport(report.entries, parseIsoDate(report.scannedAt));
       this.source = report.source;
-      this.lastScannedAt = new Date(report.scannedAt);
+      this.lastScannedAt = parseIsoDate(report.scannedAt);
       this.lastScanError = null;
     } catch (e) {
       if (isBrewError(e) && e.code === "vulns_not_installed") {
@@ -393,7 +400,7 @@ class VulnerabilitiesStore {
         kind: parsed.kind,
         name: parsed.name,
         version: parsed.version,
-        scannedAt: record.scannedAt ? new Date(record.scannedAt) : fallbackScannedAt,
+        scannedAt: record.scannedAt ? parseIsoDate(record.scannedAt) : fallbackScannedAt,
         vulns: record.vulns ?? [],
       });
     }
