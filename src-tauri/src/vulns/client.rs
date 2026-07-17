@@ -91,7 +91,7 @@ async fn run_vulns_capture(
 /// `VulnsNotInstalled` error so the frontend "Install brew-vulns"
 /// affordance shows the exact command the user (or our own
 /// install-helper IPC) will run.
-pub const BREW_VULNS_INSTALL_CMD: &str = "brew install homebrew/brew-vulns/brew-vulns";
+pub const BREW_VULNS_INSTALL_CMD: &str = "brew update";
 
 /// Hard cap on stderr captured into error excerpts. Matches
 /// [`crate::brew::exec`]'s constant so error shapes stay uniform.
@@ -271,11 +271,24 @@ pub async fn check_brew_vulns_installed(brew: &Path) -> Result<bool, BrewError> 
     // run `brew vulns` from CLI but our UI showed the install
     // affordance regardless).
     //
-    // Status-code-only check; no output parsing. Side benefit: works
-    // even before the homebrew/brew-vulns tap has been added — brew
-    // returns exit 1 cleanly.
+    // First try the legacy check: `brew --prefix brew-vulns` (if installed via custom tap).
     let mut cmd = Command::new(brew);
     cmd.args(["--prefix", "brew-vulns"])
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .kill_on_drop(true);
+    apply_brew_env(&mut cmd);
+
+    if let Ok(output) = cmd.output().await {
+        if output.status.success() {
+            return Ok(true);
+        }
+    }
+
+    // Fallback: check if `vulns` is a built-in subcommand in Homebrew 6.0+ via `brew help vulns`.
+    let mut cmd = Command::new(brew);
+    cmd.args(["help", "vulns"])
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -285,7 +298,7 @@ pub async fn check_brew_vulns_installed(brew: &Path) -> Result<bool, BrewError> 
     let output = cmd.output().await.map_err(|e| match e.kind() {
         std::io::ErrorKind::NotFound => BrewError::BrewNotFound,
         _ => BrewError::Io {
-            message: format!("brew --prefix brew-vulns spawn: {e}"),
+            message: format!("brew help vulns spawn: {e}"),
         },
     })?;
 
@@ -350,12 +363,9 @@ pub async fn scan_one(brew: &Path, formula: &str) -> Result<Vec<RawVuln>, BrewEr
 /// Returns the captured stdout on success (typically the install
 /// progress lines) so the Activity drawer can show what brew did.
 pub async fn install_brew_vulns(brew: &Path) -> Result<String, BrewError> {
-    // `brew install` is the canonical, supported way. The tap auto-
-    // installs the first time it's referenced, so no separate
-    // `brew tap` step is needed.
     run_brew_capture(
         brew,
-        &["install", "homebrew/brew-vulns/brew-vulns"],
+        &["update"],
         BREW_VULNS_INSTALL_CMD,
     )
     .await
@@ -458,11 +468,11 @@ pub fn validate_formula_name(name: &str) -> Result<(), BrewError> {
             message: format!("invalid character(s) in formula name: {name}"),
         });
     }
-    // A tap-qualified name is exactly `user/repo/name` (2 slashes); a bare name
-    // has none. Reject anything else — empty segments, leading/trailing slash,
+    // A tap-qualified name is `user/repo/name` (2 slashes) or shorthand `user/name` (1 slash);
+    // a bare name has none. Reject anything else — empty segments, leading/trailing slash,
     // `a//b`, `.`/`..` path segments, or deeper paths.
     let segments: Vec<&str> = name.split('/').collect();
-    let well_formed = matches!(segments.len(), 1 | 3)
+    let well_formed = matches!(segments.len(), 1 | 2 | 3)
         && segments.iter().all(|s| !s.is_empty() && *s != "." && *s != "..");
     if !well_formed {
         return Err(BrewError::InvalidArgument {
@@ -707,11 +717,13 @@ mod tests {
 
     #[test]
     fn validate_formula_name_accepts_tap_qualified_names() {
-        // Issue #92: third-party tap formulae are `user/repo/name`.
+        // Issue #92: third-party tap formulae are `user/repo/name` or `user/name`.
         for name in [
             "anomalyco/tap/opencode",
             "homebrew/core/wget",
             "user-name/repo_2/formula@1.2",
+            "anomalyco/opencode",
+            "homebrew/wget",
         ] {
             assert!(validate_formula_name(name).is_ok(), "should accept: {name}");
         }
@@ -719,12 +731,11 @@ mod tests {
 
     #[test]
     fn validate_formula_name_rejects_malformed_slashes() {
-        // `/` is allowed only in the exact `user/repo/name` shape.
+        // `/` is allowed only in the exact `user/repo/name` or `user/name` shape.
         for bad in [
             "/leading",
             "trailing/",
             "a//b",
-            "two/segments",
             "a/b/c/d",
             "a/../b",
             "../etc/passwd",
@@ -925,7 +936,7 @@ mod tests {
         // changes (e.g. a maintainer transfer).
         assert_eq!(
             BREW_VULNS_INSTALL_CMD,
-            "brew install homebrew/brew-vulns/brew-vulns"
+            "brew update"
         );
     }
 }

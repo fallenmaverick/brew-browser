@@ -221,10 +221,13 @@ struct VulnsService: Sendable {
     /// exit 0 = installed, any non-zero (e.g. "No available formula") =
     /// not installed — matches the Rust `output.status.success()` check.
     func isBrewVulnsInstalled() async -> Bool {
-        guard let result = try? run(["--prefix", "brew-vulns"]) else {
-            return false
+        if let result = try? run(["--prefix", "brew-vulns"]), result.exitCode == 0 {
+            return true
         }
-        return result.exitCode == 0
+        if let result = try? run(["help", "vulns"]), result.exitCode == 0 {
+            return true
+        }
+        return false
     }
 
     // MARK: Scanning
@@ -296,15 +299,10 @@ struct VulnsService: Sendable {
         return out
     }
 
-    /// Install the `brew vulns` subcommand via
-    /// `brew install homebrew/brew-vulns/brew-vulns`. Returns captured
-    /// stdout (install progress) for surfacing in an activity view.
-    ///
-    /// GOTCHA #5 — `--quiet` keeps modern brew's install chatter down.
-    /// Plain `brew install` is NOT exit-1-tolerant: a non-zero here is a
-    /// genuine install failure that should surface.
+    /// Update Homebrew via `brew update` to retrieve the built-in `brew vulns` subcommand.
+    /// Returns captured stdout for surfacing in an activity view.
     func installHelper() async throws -> String {
-        let result = try run(["install", "--quiet", "homebrew/brew-vulns/brew-vulns"])
+        let result = try run(["update"])
         guard result.exitCode == 0 else {
             throw VulnsServiceError.installFailed(code: result.exitCode, stderr: result.stderr)
         }
@@ -340,6 +338,7 @@ struct VulnsService: Sendable {
         process.arguments = args
         process.currentDirectoryURL = URL(fileURLWithPath: "/")
         process.standardInput = FileHandle.nullDevice
+        process.environment = BrewService.brewEnvironment()
 
         let stdoutPipe = Pipe()
         let stderrPipe = Pipe()
@@ -549,11 +548,11 @@ struct VulnsService: Sendable {
         guard name.unicodeScalars.allSatisfy(allowed.contains) else {
             throw VulnsServiceError.invalidFormulaName(name)
         }
-        // A tap-qualified name is exactly `user/repo/name` (2 slashes); a bare
-        // name has none. Reject anything else — empty segments, leading/trailing
+        // A tap-qualified name is `user/repo/name` (2 slashes) or shorthand `user/name` (1 slash);
+        // a bare name has none. Reject anything else — empty segments, leading/trailing
         // slash, `a//b`, `.`/`..` path segments, or deeper paths.
         let segments = name.split(separator: "/", omittingEmptySubsequences: false)
-        let wellFormed = (segments.count == 1 || segments.count == 3)
+        let wellFormed = (segments.count == 1 || segments.count == 2 || segments.count == 3)
             && segments.allSatisfy { !$0.isEmpty && $0 != "." && $0 != ".." }
         guard wellFormed else {
             throw VulnsServiceError.invalidFormulaName(name)

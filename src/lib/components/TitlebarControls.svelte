@@ -87,15 +87,9 @@
     document.addEventListener("click", onDocClick);
     window.addEventListener("keydown", onKey);
 
-    // Eagerly load GitHub status so the connection-status chip can
-    // render its color on first paint. Touches Keychain → triggers
-    // the macOS ACL prompt for users who've previously signed in
-    // (one-time per binary signature; "Always Allow" remembers).
-    //
-    // v0.3.0 follow-up: gate this on a localStorage "has-signed-in-
-    // before" flag so users who never use GitHub see zero Keychain
-    // prompts. For v0.2.2 ship we accept the prompt friction.
-    void github.loadStatus();
+    if (typeof localStorage !== "undefined" && localStorage.getItem("brew-browser:github:signed-in") === "true") {
+      void github.loadStatus();
+    }
 
     return () => {
       document.removeEventListener("click", onDocClick);

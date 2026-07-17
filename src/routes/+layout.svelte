@@ -45,9 +45,12 @@
       // the Keychain ACL is bound to the Developer-ID designated requirement
       // (stable across app updates), so a signed-in user's read is SILENT, and
       // a never-signed-in user's read finds nothing and shows no prompt.
-      // Gated on the GitHub toggle + paranoid/offline so a user who hasn't
-      // enabled GitHub never triggers a Keychain read. Fire-and-forget.
-      if (settings.effective.githubEnabled && !settings.effective.paranoidMode) {
+      if (
+        settings.effective.githubEnabled &&
+        !settings.effective.paranoidMode &&
+        typeof localStorage !== "undefined" &&
+        localStorage.getItem("brew-browser:github:signed-in") === "true"
+      ) {
         void github.loadStatus().catch(() => {});
       }
     });
