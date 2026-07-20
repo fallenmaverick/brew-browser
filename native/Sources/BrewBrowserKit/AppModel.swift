@@ -1766,6 +1766,7 @@ public final class AppModel {
             let status = try await githubService.pollDeviceFlow(deviceCode: flow.deviceCode, interval: flow.interval)
             deviceFlow = nil
             githubStatus = status
+            persistGithubSignedInHint(status)
             // Now signed in — light up the dashboard card + toolbar chip.
             if status.signedIn { await loadGithubStats() }
             return status.signedIn
@@ -2144,8 +2145,20 @@ public final class AppModel {
     /// Eagerly read GitHub sign-in status (Keychain) at launch so the toolbar's
     /// Octocat chip can render. Signed-out users have no token → no Keychain ACL
     /// prompt; only previously-signed-in users see the one-time prompt.
+    /// Persisted hint that the user has completed GitHub sign-in on this machine.
+    /// Mirrors the Tauri `brew-browser:github:signed-in` localStorage flag (#152,
+    /// @fallenmaverick): it gates the eager startup Keychain read (ContentView's
+    /// `.task`) so a user who never touches GitHub sees no macOS Keychain prompt
+    /// on launch. Set true on any signed-in status read, cleared when signed out.
+    private static let githubSignedInKey = "brew-browser:github:signed-in"
+    var githubSignedInHint: Bool { UserDefaults.standard.bool(forKey: Self.githubSignedInKey) }
+    private func persistGithubSignedInHint(_ status: GithubStatus?) {
+        UserDefaults.standard.set(status?.signedIn ?? false, forKey: Self.githubSignedInKey)
+    }
+
     func loadGithubStatus() async {
         githubStatus = githubService.status()
+        persistGithubSignedInHint(githubStatus)
         if !(githubStatus?.signedIn ?? false) {
             // Signed out (or not yet) — reset card state so a later sign-in
             // reloads fresh (the idempotent loadGithubStats keys off this).

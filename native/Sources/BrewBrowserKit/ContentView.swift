@@ -152,8 +152,12 @@ public struct ContentView: View {
             // Parse the bundled categories/enrichment JSON in the background at
             // launch so the heavy decode never blocks first paint.
             .task { await model.loadBundledData() }
-            // Eagerly read GitHub status so the toolbar Octocat chip can render.
-            .task { await model.loadGithubStatus() }
+            // Read GitHub status so the toolbar Octocat chip can render — but only
+            // for users who've signed in before (persisted hint), so a user who
+            // never touches GitHub gets no macOS Keychain prompt on launch. Parity
+            // with the Tauri localStorage gate (#152). Sign-in sets the hint, so the
+            // first post-sign-in launch (and every one after) reads status here.
+            .task { if model.githubSignedInHint { await model.loadGithubStatus() } }
             // Creds are lazy — re-read status when the window becomes active
             // again (e.g. after signing in via Settings) so the chip + dashboard
             // card light up without a manual refresh.
