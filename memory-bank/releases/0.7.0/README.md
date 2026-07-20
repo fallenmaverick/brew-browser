@@ -1,6 +1,6 @@
 # Release 0.7.0 / native 0.3.0
 
-**Status:** 🚧 In progress — contents on `main` (unreleased), headline feature (Bundles) in planning.
+**Status:** ✅ SHIPPED 2026-07-15 — `v0.7.0` (Tauri 0.7.0 / native 0.3.0), signed + notarized, both shells, tap cask + feeds live. A same-day follow-up **`v0.7.1` / native 0.3.1** shipped right after (see "0.7.1 follow-up" below).
 **Baseline:** 0.6.0 / native 0.2.0 (tag `v0.6.0`).
 **Version step:** minor — new user-facing feature (pin/unpin; Bundles to follow). Split-track per [decisions.md](../../decisions.md): Tauri/web (+Linux) `0.6.0 → 0.7.0`, native macOS `0.2.0 → 0.3.0`. Same feature set under two numbers; release notes state the equivalence ("native 0.3.0 ≙ Tauri 0.7.0"). Single git tag `v0.7.0`.
 
@@ -65,15 +65,21 @@ Curated **one-click package stacks** with post-install setup guidance, **capabil
 - [x] Decide: **Bundles rides THIS release** (0.7.0/0.3.0), plan complete → `bundles/`. ✅ 2026-07-12.
 - [x] Build Bundles **M1–M5, both shells** (branch `feat/bundles`, 2026-07-13): capability engine, recipe contract + validator, browse/install UI, setup guidance, CI + CONTRIBUTING, **and the M5 live-refresh client**. Both apps launch clean with the Bundles section; no unresolved TODOs in new code.
 - [x] **Post-M5 refinement (2026-07-13):** list+Details-pane refactor, recipe set 6→9 (Agentic Web Dev + LAMP + LEMP; expanded Image Gen/Media/Web Dev/Databases), `description` intent field (incl. Rust-struct round-trip fix), readiness dedup, clickable inline package descriptions, per-package Install. Gate: recipes 9/9 · native swift build + 195 tests · Rust bundle tests 9/9 · Tauri svelte-check 0 / vitest 57. See the Bundles section above.
-- [ ] **Serve the live-refresh endpoint**: publish `bundles.json` to `<host>/bundles/bundles.json` (release-publish step, gated to the user). The M5 client is built + unit-tested and ships safely (bundled copy kept on any error / 404); a live 200 activates the refresh. Until then it's a no-op fail-soft — nothing to verify app-side.
-- [ ] Version bumps: `package.json` / `Cargo.toml` / `tauri.conf.json` → `0.7.0`; native `build-app.sh` CFBundleShortVersionString → `0.3.0`. Docs (README, BUILD.md, release-notes/unreleased.md, native/README) consistent.
-- [ ] Live-verify on main: pin/unpin (formula + cask), Library bottom bar + Pinned tab, list-scale, install-trend, vulnerable-footer nav, GHSA enrichment.
-- [ ] Build + notarize both shells (Tauri arm64 + x64 dmgs + updater `.app.tar.gz`; native arm64 + x64 dmgs). Recipe: [build-deployment / RELEASE-BUILD GOTCHAS in project-resume-state].
-- [ ] `gh release create v0.7.0` with assets + release notes.
-- [ ] rsync feeds to host: Tauri `updater.json` (both arches) + native Sparkle `appcast.xml` (arm64-only feed).
-- [ ] **Tap cask bump** (separate repo `msitarzewski/homebrew-brew-browser`): version + per-arch sha256 (doesn't auto-follow releases).
-- [ ] Close issues fixed-in-build: **#90**, **#134** (pin); **#62**, **#92** (already fixed via #103, still open — close with "fixed in 0.7.0").
-- [ ] Update `progress.md` + `tasks/2026-07/README.md`.
+- [x] **Serve the live-refresh endpoint**: `bundles.json` served at `<host>/bundles/bundles.json` (endpoint live, schemaVersion 1). ✅ 2026-07-15.
+- [x] Version bumps → `0.7.0` / native `0.3.0` (then `0.7.1` / `0.3.1` for the follow-up). Docs consistent. ✅
+- [x] Live-verify on main (user screenshots): Bundles list+detail, readiness, per-package install, pin/unpin, etc. ✅
+- [x] Build + notarize both shells — Tauri arm64+x64 dmgs + updater `.app.tar.gz`; native arm64+x64 dmgs + Sparkle appcast. All 4 dmgs Gatekeeper-accepted. ✅ 2026-07-15.
+- [x] `gh release create v0.7.0` (6 assets + notes). ✅ [releases/tag/v0.7.0](https://github.com/msitarzewski/brew-browser/releases/tag/v0.7.0).
+- [x] rsync feeds to host: `updater.json` (both arches) + Sparkle `appcast.xml`. ✅
+- [x] **Tap cask bump** (`msitarzewski/homebrew-brew-browser`): bumped to **0.7.1** (it was stuck at 0.6.0; the 0.7.0 bump was folded into the 0.7.1 publish). ✅
+- [x] Close issues **#90 / #134 / #62 / #92** — all closed. ✅
+
+## 0.7.1 follow-up (SHIPPED 2026-07-15, tag `v0.7.1` / native 0.3.1)
+Same-day patch release. **Notes: [../0.7.1 → docs/release-notes/0.7.1.md](../../../docs/release-notes/0.7.1.md).**
+- **Resizable Activity console** (#136, community @cseelye) — merged to main *after* the 0.7.0 build was cut, so it shipped here. Both shells; drawer height persists.
+- **Linux CI fix** (#149) — the Linux workflow was failing at updater-artifact signing (no `TAURI_SIGNING_PRIVATE_KEY` on CI) *after* building `.deb`/`.rpm`/`.AppImage`, so no Linux artifacts on any tagged release (v0.6.0/v0.7.0 both red). Fix: `--config '{"bundle":{"createUpdaterArtifacts":false}}'` for the Linux build only (Linux auto-updater is unwired). v0.7.1 tag CI is the first green Linux run.
+- **⚠️ LESSON:** I listed the resizable console in the 0.7.0 notes as *shipped* when it had only been *reconciled + test-merged* (a throwaway branch, green 199 tests) — never actually merged to main / never in the 0.7.0 build. **Don't mark a PR "shipped" until it's on main AND in the built artifact.** 0.7.1 corrected the 0.7.0 notes (de-listed it) and shipped it for real. Same trap as treating "mergeable/ready" as "merged".
+- Gate: Tauri svelte-check 0 / vitest 57 · native swift build + 199 tests · all 4 dmgs notarized. Published via one `!`-run script (release + feeds + tap bump), gh operations gated to the user (auto-mode classifier blocks agent-run `gh release create` / rsync / community-PR merge — see [[project-resume-state]] permission notes).
 
 ## Open threads / housekeeping
 - **Stale local branches**: many old `release/*`, `docs/*`, merged `feat/*` branches linger locally (not on `main`). Prune candidate — confirm with user first.
