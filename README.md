@@ -217,9 +217,16 @@ Contributions welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md) for the dev loop
 
 ## Status
 
-**Next release:** Tauri `0.7.1` and native `0.3.1` (split-track; native 0.3.1 ≙ Tauri 0.7.1, single tag `v0.7.1`) — a small follow-up that adds the **resizable Activity console** (community contribution by @cseelye) which landed just after the 0.7.0 build, plus a Linux-CI fix so the `.deb` / `.rpm` / `.AppImage` bundles publish again. Full notes: [docs/release-notes/0.7.1.md](./docs/release-notes/0.7.1.md).
+**Next release:** Tauri `0.7.2` and native `0.3.2` (split-track; native 0.3.2 ≙ Tauri 0.7.2, single tag `v0.7.2`) — a bug-fix patch led by **Homebrew 6.0+ compatibility** for vulnerability scanning (the `vulns` subcommand moved into core; detection + the install affordance now handle it instead of chasing a deleted formula), plus **no more startup macOS Keychain prompts** (both shells) and a WebKit fresh-scan-time parsing fix. Community fix by @fallenmaverick. Full notes: [docs/release-notes/0.7.2.md](./docs/release-notes/0.7.2.md).
 
-**Current stable release:** Tauri `0.7.0` + native `0.3.0` shipped signed + notarized together — headlined by **Bundles** (capability-gated one-click package stacks, 9 recipes, both shells), plus per-package **pin / unpin** (formulae and casks), in-app brew command options with reactive recovery, **Brew Doctor + Cleanup** on the Dashboard Storage card, and vulnerability-scanning hardening. All seven core panes plus Bundles live in both shells; optional GitHub integration via OAuth Device Flow is intent-discovered; opt-in **Enhanced Trending History** (v0.4.0+) and **Vulnerability Scanning** (v0.5.0+) sit beyond the always-on core; Settings ships with Offline Mode and a corrupt-recovery default.
+**Current stable release:** Tauri `0.7.1` + native `0.3.1` shipped signed + notarized together — a small follow-up to the Bundles release adding the **resizable Activity console** (community contribution by @cseelye) and a Linux-CI fix so the `.deb` / `.rpm` / `.AppImage` bundles publish. The prior `0.7.0` was the **Bundles** headline release (capability-gated one-click package stacks, 9 recipes, both shells) plus pin/unpin, in-app brew command options, Brew Doctor + Cleanup, and vulnerability-scanning hardening. Optional GitHub integration via OAuth Device Flow is intent-discovered; opt-in **Enhanced Trending History** (v0.4.0+) and **Vulnerability Scanning** (v0.5.0+) sit beyond the always-on core; Settings ships with Offline Mode and a corrupt-recovery default.
+
+**v0.7.2 / native 0.3.2** — bug-fix patch. Highlights:
+- **Homebrew 6.0+ vuln-scan compatibility** (#152, @fallenmaverick). `vulns` moved into core in brew 6.0+ and the standalone tap was deleted; detection now falls back to `brew help vulns` and the install affordance runs `brew update` instead of chasing a deleted formula. Both shells.
+- **No startup Keychain prompts.** The eager GitHub-status read on launch is gated behind a persisted "signed-in before" flag, so users who never use GitHub get no macOS Keychain prompt (Tauri #152, native #155).
+- **"59 minutes ago" scan-time fix** — WebKit nanosecond ISO timestamps are truncated to ms before parsing (#152).
+- **Homebrew subprocess env** — native `VulnsService` inherits the app's brew environment; the Tauri PATH prepend now includes Linuxbrew (#152, #155).
+- Full notes: [docs/release-notes/0.7.2.md](./docs/release-notes/0.7.2.md).
 
 **v0.7.1 / native 0.3.1** — small follow-up. Highlights:
 - **Resizable Activity console** (#136) — the live `brew` output drawer resizes in both shells, with the height persisted across launches. Community contribution by **@cseelye**. (Listed in the 0.7.0 notes but it landed just after that build; it ships here.)
